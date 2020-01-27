@@ -10,15 +10,23 @@ void separate(vector<int> polmon, int ss1, vector<int> polkol, int ss2, int prod
               double PavRate, int lenin, int leninmeteo, string outfileAllGrWat,
               string lenallGrWat, string outfileTotal, int lenTotal, string outfileparameters, int lenparameters,
               bool ModeMountain, double pgrad, string outfilepavs, int lenpavs, vector<int> polkolMount, int ss4,
-              double polgradMount, double gradabs, int mome) {
+              double polgradMount, double gradabs, int mome, vector<int> Day1, vector<int> Mon1, vector<int> Year1,
+              vector<float> Qin1, vector<float> Tin1, vector<float> Pin1) {
 
     // Initialize vectors
     vector<int> iy(100, -99);
     vector<int> ny(100, 0);
     vector<int> Ygaps(100, 0);
+    vector<int> NumGapsY(100, 0);
 
 
-    return;
+    int ng = 1;
+    vector<int> donep(4, -1);
+
+    double polQsum = 0;
+
+    int w = Day1.size();
+
 }
 
 void read_inputs(string infilehydro, string infilemeteo,
