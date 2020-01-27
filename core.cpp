@@ -24,15 +24,21 @@ void separate(vector<int> polmon, int ss1, vector<int> polkol, int ss2, int prod
 void read_inputs(string infilehydro, string infilemeteo,
                  vector<int> &Day1,  vector<int> &Mon1,  vector<int> &Year1, vector<float> &Qin1,
                  vector<float> &Tin1, vector<float> &Pin1) {
-    io::CSVReader<4, io::trim_chars<>, io::no_quote_escape<' '>> in(infilehydro);
-//    in.read_header(io::ignore_extra_column, "day", "month", "year", "qin");
+    io::CSVReader<4, io::trim_chars<>, io::no_quote_escape<' '>> inhydro(infilehydro);
     int day, month, year;
     double qin;
-    while(in.read_row(day, month, year, qin)){
+    while(inhydro.read_row(day, month, year, qin)){
         Day1.push_back(day);
         Mon1.push_back(month);
         Year1.push_back(year);
         Qin1.push_back(qin);
+    }
+
+    io::CSVReader<2, io::trim_chars<>, io::no_quote_escape<' '>> inmeteo(infilemeteo);
+    double tin, pin;
+    while(inmeteo.read_row(tin, pin)){
+        Tin1.push_back(tin);
+        Pin1.push_back(pin);
     }
 }
 
@@ -48,6 +54,7 @@ int main() {
 
     read_inputs("in.txt", "inmeteo.txt", Day1, Mon1, Year1, Qin1, Tin1, Pin1);
 
-    cout << Year1[0];
+    cout << Year1[0] << endl;
+    cout << Pin1[0];
 }
 
