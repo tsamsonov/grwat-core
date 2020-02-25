@@ -21,7 +21,9 @@ void separate(vector<int> polmon, int ss1, vector<int> polkol, int ss2, int prod
 
 
     int ng = 1;
-    vector<int> donep(4, -1);
+    vector<int> donep(4, -1); // four criteria of seasonal discharge beginning
+
+
 
     double polQsum = 0;
 

@@ -1,0 +1,3 @@
+/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles/grwat_core.dir
