@@ -1,5 +1,6 @@
 #include <vector>
 #include <map>
+#include <set>
 #include <iostream>
 #include "csv.h"
 using namespace std;
@@ -43,14 +44,6 @@ namespace grwat {
                   vector<float> Qin, vector<float> Tin, vector<float> Pin,
                   parameters p) {
 
-        // Initialize vectors
-        vector<int> iy;
-        vector<int> ny;
-        vector<int> Ygaps;
-        vector<int> NumGapsY;
-
-        vector<int> donep(4, -1); // four criteria of seasonal discharge beginning
-
         // detect gaps in data
         map<int, int> FactGapsin;
         int i = 0;
@@ -63,13 +56,73 @@ namespace grwat {
                     it++;
                 }
                 FactGapsin[i] = k;
-
-                cout << i << endl;
-                cout << FactGapsin[i] << endl;
-
                 i += k;
             }
             i++;
+        }
+
+        // Initialize vectors
+
+        set<int> years(Year.begin(), Year.end());
+        auto nyears = years.size();
+
+        vector<int> iy(nyears, -99); // indices of water resource years ends
+        vector<int> ny(nyears, 0);
+        vector<int> YGaps(nyears, 0);
+        vector<int> donep(4, -1); // four criteria of seasonal discharge beginning
+        map<int, int> NumGapsY;
+        auto NumGaps = 0;
+        auto y = Year[0];
+        auto ng = 1; // number of the first year
+
+        donep[4] = y;
+
+        auto w = Qin.size();
+        for (l = 0; l < w; l++){ // 177
+
+            if (Qin[l] = p.FlagGaps) { // 185
+                if (Year[l] != y) {
+                    NumGapsY[y] = NumGaps;
+                    y = Year[l];
+                }
+                NumGaps++;
+            }
+
+            if (Year[l] > donep[4]) { // 190
+                if (NumGapsY[Year[l] - 1] >=30) {
+                    if (ng > 1) {
+                        iy[ng - 1] = -99;
+                    }
+
+                    YGaps[ng] = 1;
+                    YGaps[ng - 1] = 1;
+                    ng = ng + 1;
+                    NumGaps = 0;
+                    donep[4] = Year[l];
+                } else {
+                    auto hh = 0;
+                    while (iy[ng - hh] < 0) {
+                        hh++;
+                    }
+
+                    auto begin = iy[ng - hh] + 300;
+                    auto lengthcrop = l - begin + 1;
+                    auto end = begin + lengthcrop - 1;
+                    vector<float> Qcrop(Qin.begin() + begin, Qin.begin() + end);
+                    vector<float> Yearcrop(Year.begin() + begin, Year.begin() + end);
+                    vector<float> Moncrop(Mon.begin() + begin, Mon.begin() + end);
+                    vector<float> Daycrop(Day.begin() + begin, Day.begin() + end);
+
+                    // POLFINDER
+
+                }
+            }
+
+            if (Year[l] == donep[4]) { //221
+                if (Mon[l] >= p.polmon1 and Mon[l] <= p.polmon2 and Qin[l] != p.FlagGaps) { //223
+
+                }
+            }
         }
 
 
