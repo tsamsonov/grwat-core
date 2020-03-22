@@ -158,17 +158,29 @@ namespace grwat {
                         else
                             donep[2] = 1;
 
-                        if (p.ModeMountain) {
+                        auto polQsum = 0;
 
+                        if (p.ModeMountain) {
+                            donep[3] = 1;
+                            for (auto ff = 1; ff <= p.polkolMount1; ff++) {
+                                for (auto fff = ff; fff <= p.polkolMount2; fff++)
+                                    polQsum = polQsum + Qin[l + fff];
+                                if (polQsum / (Qin[l] * p.polkolMount2) < p.polgradMount)
+                                    donep[3] = -1;
+                            }
+                        } else {
+                            for (auto ff = 0; ff <= p.polkol3; ff++)
+                                polQsum = polQsum + Qin[l + ff - 1];
+
+                            if (polQsum / (Qin[l] * p.polkol3) < p.polgrad2)
+                                donep[3] = -1;
+                            else
+                                donep[3] = 1;
                         }
                     }
                 }
             }
         }
-
-
-
-
     }
 
     void read_inputs(string infilehydro, string infilemeteo,
