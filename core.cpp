@@ -74,13 +74,14 @@ namespace grwat {
         auto NumGaps = 0;
         auto y = Year[0];
         auto ng = 1; // number of the first year
+        auto iy1 = 0;
 
         donep[4] = y;
 
         auto w = Qin.size();
-        for (l = 0; l < w; l++){ // 177
+        for (auto l = 0; l < w; l++){ // 177
 
-            if (Qin[l] = p.FlagGaps) { // 185
+            if (Qin[l] == p.FlagGaps) { // 185
                 if (Year[l] != y) {
                     NumGapsY[y] = NumGaps;
                     y = Year[l];
@@ -120,7 +121,33 @@ namespace grwat {
 
             if (Year[l] == donep[4]) { //221
                 if (Mon[l] >= p.polmon1 and Mon[l] <= p.polmon2 and Qin[l] != p.FlagGaps) { //223
+                    auto dQ = 0;
+                    auto proceed = true;
+                    for (auto ff = 1; ff <= p.polkol1; ff++) {
+                        if (Qin[l + ff] == p.FlagGaps or Qin[l + ff - 1] == p.FlagGaps) { // goto 8787
+                            if (donep[1] == 1 and donep[2] == 1 and donep[3] == 1) {
+                                if (ng > 1) {
+                                    iy[ng - 1] = l - 1;
+                                } else {
+                                    iy1 = l - 1;
+                                }
+                                donep[4] = Year[l] + 1; // search next seasona flood in the next year
+                                if (l > 1 and NumGaps > 0) {
+                                    YGaps[ng - 1] = 1;
+                                    NumGaps = 0;
+                                }
+                                ng = ng + 1; // number of years
+                            }
+                            proceed = false;
+                            break;
+                        } else {
+                            dQ = dQ + (Qin[l + ff - 1] - Qin[l + ff]) / (100 * Qin[l + ff - 1] * p.polkol1);
+                        }
+                    }
 
+                    if (proceed) {
+
+                    }
                 }
             }
         }
