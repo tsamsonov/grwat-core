@@ -91,9 +91,8 @@ namespace grwat {
 
             if (Year[l] > donep[4]) { // 190
                 if (NumGapsY[Year[l] - 1] >=30) {
-                    if (ng > 1) {
+                    if (ng > 1)
                         iy[ng - 1] = -99;
-                    }
 
                     YGaps[ng] = 1;
                     YGaps[ng - 1] = 1;
@@ -102,9 +101,8 @@ namespace grwat {
                     donep[4] = Year[l];
                 } else {
                     auto hh = 0;
-                    while (iy[ng - hh] < 0) {
+                    while (iy[ng - hh] < 0)
                         hh++;
-                    }
 
                     auto begin = iy[ng - hh] + 300;
                     auto lengthcrop = l - begin + 1;
@@ -146,7 +144,23 @@ namespace grwat {
                     }
 
                     if (proceed) {
+                        if (dQ > -p.polgrad1)
+                            donep[1] = -1;
+                        else
+                            donep[1] = 1;
 
+                        dQ = 0;
+                        for (auto ff = 1; ff <= p.polkol2; ff++)
+                            dQ = dQ + (Qin[l + ff - 1] - Qin[l + ff]) / (100 * Qin[l + ff - 1] * p.polkol2);
+
+                        if (dQ > 0)
+                            donep[2] = -1;
+                        else
+                            donep[2] = 1;
+
+                        if (p.ModeMountain) {
+
+                        }
                     }
                 }
             }
