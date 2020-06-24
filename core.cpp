@@ -199,7 +199,8 @@ namespace grwat {
 
     void separate(vector<int> Day, vector<int> Mon, vector<int> Year,
                   vector<float> Qin, vector<float> Tin, vector<float> Pin,
-                  parameters par) {
+                  vector<float>& Qgr, vector<float>& Qpol, vector<float>& Qpav,
+                  vector<float>& Qthaw, vector<float>& Qpb, parameters par) {
 
         // detect gaps in data
         map<int, int> FactGapsin;
@@ -390,7 +391,15 @@ int main() {
 
     grwat::parameters p;
 
-    grwat::separate(Day, Mon, Year, Qin, Tin, Pin, p);
+    auto n = Qin.size();
+
+    vector<float> Qgr(n, 0);
+    vector<float> Qpol(n, 0);
+    vector<float> Qpav(n, 0);
+    vector<float> Qthaw(n, 0);
+    vector<float> Qpb(n, 0);
+
+    grwat::separate(Day, Mon, Year, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
 
 }
 
