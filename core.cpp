@@ -42,7 +42,7 @@ namespace grwat {
     };
 
     bool polfinder(const vector<int> &Day, const vector<int> &Mon, const vector<int> &Year,
-                   const vector<float> &Qin, vector<int> &donep, int &iyY, int &ng, int lstart, parameters &par) {
+                   const vector<float> &Qin, vector<int> &donep, int &iyY, int lstart, parameters &par) {
 
         auto polgrad1 = par.polgrad1;
         auto polgrad2 = par.polgrad2;
@@ -232,11 +232,13 @@ namespace grwat {
         auto NumGaps = 0;
         auto y = Year[0];
         auto ng = 0; // number of the first year
-        auto iy1 = 0;
-        auto iylast = -1;
         float polQsum = 0.0;
 
-        donep[3]= y;
+        // auto iy1 = 0;
+        // auto iylast = -1;
+
+        auto iylast = 0;
+        donep[3] = y;
 
         auto w = Qin.size();
         for (auto l = 0; l < w; l++){ // 177
@@ -253,8 +255,10 @@ namespace grwat {
 
             if (Year[l] > donep[3]) { // 190
                 if (NumGapsY[Year[l] - 1] >=30) {
-                    if (ng > 0)
-                        iy[ng - 1] = -99;
+
+                    iy[ng] = -99;
+                    // if (ng > 0)
+                    //   iy[ng - 1] = -99;
 
                     YGaps[ng] = 1;
                     YGaps[ng - 1] = 1;
@@ -262,10 +266,14 @@ namespace grwat {
                     NumGaps = 0;
                     donep[3] = Year[l];
                 } else {
-                    auto begin = (iylast >=0) ? iy[iylast] + 300 : (iy1 > 0) ? iy1 + 300: 0;
+                    auto begin = (iylast >=0) ? iy[iylast] + 300 : 0;
+                    // auto begin = (iylast >=0) ? iy[iylast] + 300 : (iy1 > 0) ? iy1 + 300: 0
                     auto lengthcrop = l - begin + 1;
                     auto end = begin + lengthcrop - 1;
-                    int& iyY = ng > 0 ? iy[ng-1] : iy1;
+
+                    // int& iyY = ng > 0 ? iy[ng-1] : iy1;
+                    int& iyY = iy[ng];
+
                     vector<float> Qcrop(Qin.begin() + begin, Qin.begin() + end);
                     vector<int> Yearcrop(Year.begin() + begin, Year.begin() + end);
                     vector<int> Moncrop(Mon.begin() + begin, Mon.begin() + end);
@@ -273,9 +281,10 @@ namespace grwat {
 
                     // POLFINDER
                     std::cout << "Polfinder: " << donep[3] << std::endl;
-                    auto polfound = polfinder(Daycrop, Moncrop, Yearcrop, Qcrop, donep, iyY, ng, begin, par);
+                    auto polfound = polfinder(Daycrop, Moncrop, Yearcrop, Qcrop, donep, iyY, begin, par);
                     if (polfound) {
-                        iylast = ng - 1;
+                        // iylast = ng - 1;
+                        iylast = ng;
                     } else {
                         cout << "Failed" << endl;
                         donep[3]++;
@@ -337,21 +346,40 @@ namespace grwat {
                     }
 
                     if (donep[0] == 1 and donep[1] == 1 and donep[2] == 1) {
-                        if (ng > 0) {
-                            iy[ng - 1] = l - 1;
-                            iylast = ng - 1;
-                        } else {
-                            iy1 = l - 1;
-                        }
+//                        if (ng > 0) {
+//                            iy[ng - 1] = l - 1;
+//                            iylast = ng - 1;
+//                        } else {
+//                            iy1 = l - 1;
+//                        }
+                        iy[ng] = l - 1;
+                        iylast = ng;
+
                         donep[3] = Year[l] + 1; // search next seasonal flood in the next year
-                        if (l > 1 and NumGaps > 0) {
-                            YGaps[ng - 1] = 1;
+//                        if (l > 1 and NumGaps > 0) {
+//                            YGaps[ng - 1] = 1;
+//                            NumGaps = 0;
+//                        }
+
+                        if (NumGaps > 0) {
+                            YGaps[ng] = 1;
                             NumGaps = 0;
                         }
-                        ng = ng + 1; // number of years
+                        ng++; // number of years
                     }
                 }
             }
+        }
+
+        cout << "Water resources year beginnings:" << endl;
+
+//        Qpol[iy1 + 1] = 1;
+//
+//        cout << Day[iy1 + 1] << '-' << Mon[iy1 + 1] << '-' << Year[iy1 + 1] << endl;
+
+        for (auto i: iy) {
+            Qpol[i + 1] = 1;
+            cout << Day[i + 1] << '-' << Mon[i + 1] << '-' << Year[i + 1] << endl;
         }
     }
 
