@@ -80,7 +80,7 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/Users/tsamsonov/GitHub/grwat-core/core.cpp">
+		<Unit filename="/Users/tsamsonov/GitHub/grwat-core/main.cpp">
 			<Option target="grwat_core"/>
 		</Unit>
 		<Unit filename="/Users/tsamsonov/GitHub/grwat-core/CMakeLists.txt">

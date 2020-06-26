@@ -57,27 +57,27 @@ include CMakeFiles/grwat_core.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/grwat_core.dir/flags.make
 
-CMakeFiles/grwat_core.dir/core.cpp.o: CMakeFiles/grwat_core.dir/flags.make
-CMakeFiles/grwat_core.dir/core.cpp.o: ../core.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/grwat_core.dir/core.cpp.o"
-	/Library/Developer/CommandLineTools/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/grwat_core.dir/core.cpp.o -c /Users/tsamsonov/GitHub/grwat-core/core.cpp
+CMakeFiles/grwat_core.dir/main.cpp.o: CMakeFiles/grwat_core.dir/flags.make
+CMakeFiles/grwat_core.dir/main.cpp.o: ../main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/grwat_core.dir/main.cpp.o"
+	/Library/Developer/CommandLineTools/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/grwat_core.dir/main.cpp.o -c /Users/tsamsonov/GitHub/grwat-core/main.cpp
 
-CMakeFiles/grwat_core.dir/core.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/grwat_core.dir/core.cpp.i"
-	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/tsamsonov/GitHub/grwat-core/core.cpp > CMakeFiles/grwat_core.dir/core.cpp.i
+CMakeFiles/grwat_core.dir/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/grwat_core.dir/main.cpp.i"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/tsamsonov/GitHub/grwat-core/main.cpp > CMakeFiles/grwat_core.dir/main.cpp.i
 
-CMakeFiles/grwat_core.dir/core.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/grwat_core.dir/core.cpp.s"
-	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/tsamsonov/GitHub/grwat-core/core.cpp -o CMakeFiles/grwat_core.dir/core.cpp.s
+CMakeFiles/grwat_core.dir/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/grwat_core.dir/main.cpp.s"
+	/Library/Developer/CommandLineTools/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/tsamsonov/GitHub/grwat-core/main.cpp -o CMakeFiles/grwat_core.dir/main.cpp.s
 
 # Object files for target grwat_core
 grwat_core_OBJECTS = \
-"CMakeFiles/grwat_core.dir/core.cpp.o"
+"CMakeFiles/grwat_core.dir/main.cpp.o"
 
 # External object files for target grwat_core
 grwat_core_EXTERNAL_OBJECTS =
 
-grwat_core: CMakeFiles/grwat_core.dir/core.cpp.o
+grwat_core: CMakeFiles/grwat_core.dir/main.cpp.o
 grwat_core: CMakeFiles/grwat_core.dir/build.make
 grwat_core: CMakeFiles/grwat_core.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable grwat_core"

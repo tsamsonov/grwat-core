@@ -6,20 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/Users/tsamsonov/GitHub/grwat-core/core.cpp
-vector
--
-map
--
-set
--
-iostream
--
-random
--
-csv.h
-/Users/tsamsonov/GitHub/grwat-core/csv.h
-
 /Users/tsamsonov/GitHub/grwat-core/csv.h
 vector
 -
@@ -49,4 +35,22 @@ cerrno
 -
 istream
 -
+
+/Users/tsamsonov/GitHub/grwat-core/grwat_core.cpp
+vector
+-
+map
+-
+set
+-
+iostream
+-
+random
+-
+
+/Users/tsamsonov/GitHub/grwat-core/main.cpp
+csv.h
+/Users/tsamsonov/GitHub/grwat-core/csv.h
+grwat_core.cpp
+/Users/tsamsonov/GitHub/grwat-core/grwat_core.cpp
 

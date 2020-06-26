@@ -3,4 +3,4 @@ project(grwat_core)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(grwat_core core.cpp)
+add_executable(grwat_core main.cpp)

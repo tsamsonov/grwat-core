@@ -123,32 +123,32 @@ grwat_core/fast:
 	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/build
 .PHONY : grwat_core/fast
 
-core.o: core.cpp.o
+main.o: main.cpp.o
 
-.PHONY : core.o
+.PHONY : main.o
 
 # target to build an object file
-core.cpp.o:
-	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/core.cpp.o
-.PHONY : core.cpp.o
+main.cpp.o:
+	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/main.cpp.o
+.PHONY : main.cpp.o
 
-core.i: core.cpp.i
+main.i: main.cpp.i
 
-.PHONY : core.i
+.PHONY : main.i
 
 # target to preprocess a source file
-core.cpp.i:
-	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/core.cpp.i
-.PHONY : core.cpp.i
+main.cpp.i:
+	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/main.cpp.i
+.PHONY : main.cpp.i
 
-core.s: core.cpp.s
+main.s: main.cpp.s
 
-.PHONY : core.s
+.PHONY : main.s
 
 # target to generate assembly for a file
-core.cpp.s:
-	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/core.cpp.s
-.PHONY : core.cpp.s
+main.cpp.s:
+	$(MAKE) -f CMakeFiles/grwat_core.dir/build.make CMakeFiles/grwat_core.dir/main.cpp.s
+.PHONY : main.cpp.s
 
 # Help Target
 help:
@@ -159,9 +159,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... grwat_core"
-	@echo "... core.o"
-	@echo "... core.i"
-	@echo "... core.s"
+	@echo "... main.o"
+	@echo "... main.i"
+	@echo "... main.s"
 .PHONY : help
 
 

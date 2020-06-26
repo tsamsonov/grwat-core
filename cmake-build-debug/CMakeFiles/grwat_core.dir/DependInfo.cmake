@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/tsamsonov/GitHub/grwat-core/core.cpp" "/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles/grwat_core.dir/core.cpp.o"
+  "/Users/tsamsonov/GitHub/grwat-core/main.cpp" "/Users/tsamsonov/GitHub/grwat-core/cmake-build-debug/CMakeFiles/grwat_core.dir/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "AppleClang")
 
