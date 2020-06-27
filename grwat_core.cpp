@@ -40,28 +40,71 @@ namespace grwat {
         double polgradMount = 1.5;
     };
 
+    static void jitter_parameters(parameters &p,
+                                  const parameters &par,
+                                  const vector<int> &Sumdonep) {
+
+        // уменьшение параметров в зависимости от того, какой donep не срабатывает
+        bool vsebylo = (Sumdonep[0] > 0 and Sumdonep[1] > 0 and Sumdonep[2] > 0) ? 1 : 0;
+
+        auto Smallestdonep = min({Sumdonep[0], Sumdonep[1], Sumdonep[2]});
+
+        random_device rdev;
+        default_random_engine seed(rdev());
+        uniform_real_distribution<> ran(0, 1);
+
+        if (Sumdonep[0] == 0 or (vsebylo == 1 and Sumdonep[0] == Smallestdonep)) {
+            auto choose = ran(seed);
+            if (choose <= 0.5)
+                p.polgrad1 = p.polgrad1 - 0.1 * p.polgrad1;
+            else if (p.polkol1 > 2)
+                p.polkol1 = p.polkol1 - 1;
+            else
+                p.polgrad1 = p.polgrad1 - 0.1 * p.polgrad1;
+
+        }
+
+        if (Sumdonep[1] == 0 or (vsebylo == 1 and Sumdonep[1] == Smallestdonep)) {
+            p.polkol2 = p.polkol2 - 1;
+        }
+
+        if (Sumdonep[2] == 0 or (vsebylo == 1 and Sumdonep[2] == Smallestdonep)) {
+            auto choose = ran(seed);
+            if (p.ModeMountain) {
+                if (choose <= 0.2) {
+                    p.polkolMount1 = p.polkolMount1 - 5;
+                } else if (choose > 0.2 and choose <= 0.6) {
+                    if (p.polkolMount2 > 1)
+                        p.polkolMount1 = p.polkolMount1 - 1;
+                    else
+                        p.polgradMount = p.polgradMount - 0.1 * p.polgradMount;
+                } else {
+                    p.polgradMount = p.polgradMount - 0.1 * p.polgradMount;
+                }
+            } else {
+                if (choose <= 0.5) {
+                    p.polgrad2 = p.polgrad2 - 0.1 * p.polgrad2;
+                } else if (p.polkol3 > par.polkol3 / 2) {
+                    p.polkol3 = p.polkol3 - 5;
+                } else {
+                    p.polgrad2 = p.polgrad2 - 0.1 * p.polgrad2;
+                }
+            }
+        }
+    }
+
     static bool polfinder(const vector<int> &Year, const vector<int> &Mon, const vector<int> &Day,
-                   const vector<double> &Qin, vector<int> &donep, int &iyY, const int& lstart, const parameters& par) {
+                          const vector<double> &Qin, vector<int> &donep, int &iyY, const int& lstart, const parameters& par) {
 
-        auto polgrad1 = par.polgrad1;
-        auto polgrad2 = par.polgrad2;
-        auto polkol1 = par.polkol1;
-        auto polkol2 = par.polkol2;
-        auto polkol3 = par.polkol3;
-
-        auto polkolMount1 = par.polkolMount1;
-        auto polkolMount2 = par.polkolMount2;
-        auto polgradMount = par.polgradMount;
-
-        auto p = Day.size();
+        auto p = par; // create a loca copy of parameters for possible changing (should be made on each iteration)
+        auto n = Day.size();
 
         auto enter_adjustment = true;
 
         for (int i = 0; i < 100; ++i) { // 1398
             vector<int> Sumdonep(4, 0);
-            auto vsebylo = 0;
 
-            for (int l = 0; l < p; ++l) {
+            for (int l = 0; l < n; ++l) {
                 double polQsum = 0.0;
 
                 for (int j = 0; j < 3; ++j)
@@ -73,10 +116,10 @@ namespace grwat {
                         // проверка критерия начала половодья №1 -
                         // устойчивое увеличение со средним градиентом больше или равном заданному polgrad1
                         double dQ = 0.0;
-                        for (auto ff = 1; ff <= polkol1; ff++)
-                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * polkol1);
+                        for (auto ff = 1; ff <= p.polkol1; ff++)
+                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol1);
 
-                        if (dQ <= polgrad1)
+                        if (dQ <= p.polgrad1)
                             donep[0] = -1;
                         else {
                             donep[0] = 1;
@@ -86,8 +129,8 @@ namespace grwat {
                         // проверка критерия начала половодья №2 -
                         // устойчивое увеличение не заканчивается polkol2 дней
                         dQ = 0.0;
-                        for (auto ff = 1; ff <= polkol2; ff++)
-                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * polkol2);
+                        for (auto ff = 1; ff <= p.polkol2; ff++)
+                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol2);
 
                         if (dQ <= 0)
                             donep[1]= -1;
@@ -100,11 +143,11 @@ namespace grwat {
                             // проверка критерия начала половодья №3 для гор -
                             // превышение в течении polkolMount1 каждые polkolMount2 дней расхода воды в polgradMount раз
                             donep[2] = 1;
-                            for (auto ff = 1; ff <= polkolMount1; ff++) {
+                            for (auto ff = 1; ff <= p.polkolMount1; ff++) {
                                 polQsum = 0.0;
-                                for (auto fff = ff; fff <= ff + polkolMount2; fff++)
+                                for (auto fff = ff; fff <= ff + p.polkolMount2; fff++)
                                     polQsum = polQsum + Qin[l + fff];
-                                if (polQsum / (Qin[l] * polkolMount2) < polgradMount)
+                                if (polQsum / (Qin[l] * p.polkolMount2) < p.polgradMount)
                                     donep[2]= -1;
                             }
 
@@ -113,10 +156,10 @@ namespace grwat {
                         } else {
                             // проверка критерия начала половодья №3 для равнинных рек -
                             // превышение среднего расхода воды за polkol3 дней расхода дня начала половодья (Qin[l]) в  polgrad2 раз
-                            for (auto ff = 1; ff <= polkol3; ff++)
+                            for (auto ff = 1; ff <= p.polkol3; ff++)
                                 polQsum = polQsum + Qin[l + ff - 1];
 
-                            if (polQsum / (Qin[l] * polkol3) < polgrad2)
+                            if (polQsum / (Qin[l] * p.polkol3) < p.polgrad2)
                                 donep[2]= -1;
                             else {
                                 donep[2] = 1;
@@ -142,59 +185,27 @@ namespace grwat {
                 enter_adjustment = false;
             }
 
-
-            // уменьшение параметров в зависимости от того, какой donep не срабатывает
-            vsebylo = (Sumdonep[0] > 0 and Sumdonep[1] > 0 and Sumdonep[2] > 0) ? 1 : 0;
-
-            auto Smallestdonep = std::min({Sumdonep[0], Sumdonep[1], Sumdonep[2]});
-
-            std::random_device rdev;
-            std::default_random_engine seed(rdev());
-            std::uniform_real_distribution<> ran(0, 1);
-
-            if (Sumdonep[0] == 0 or (vsebylo == 1 and Sumdonep[0] == Smallestdonep)) {
-                auto choose = ran(seed);
-                if (choose <= 0.5)
-                    polgrad1 = polgrad1 - 0.1 * polgrad1;
-                else if (polkol1 > 2)
-                    polkol1 = polkol1 - 1;
-                else
-                    polgrad1 = polgrad1 - 0.1 * polgrad1;
-
-            }
-
-            if (Sumdonep[1] == 0 or (vsebylo == 1 and Sumdonep[1] == Smallestdonep)) {
-                polkol2 = polkol2 - 1;
-            }
-
-            if (Sumdonep[2] == 0 or (vsebylo == 1 and Sumdonep[2] == Smallestdonep)) {
-                auto choose = ran(seed);
-                if (par.ModeMountain) {
-                    if (choose <= 0.2) {
-                        polkolMount1 = polkolMount1 - 5;
-                    } else if (choose > 0.2 and choose <= 0.6) {
-                        if (polkolMount2 > 1)
-                            polkolMount1 = polkolMount1 - 1;
-                        else
-                            polgradMount = polgradMount - 0.1 * polgradMount;
-                    } else {
-                        polgradMount = polgradMount - 0.1 * polgradMount;
-                    }
-                } else {
-                    if (choose <= 0.5) {
-                        polgrad2 = polgrad2 - 0.1 * polgrad2;
-                    } else if (polkol3 > par.polkol3 / 2) {
-                        polkol3 = polkol3 - 5;
-                    } else {
-                        polgrad2 = polgrad2 - 0.1 * polgrad2;
-                    }
-                }
-            }
+            jitter_parameters(p, par, Sumdonep);
 
         }
 
         return false; // SEASONAL FLOOD NOT FOUND
     }
+
+    static map<int, pair<int, int>> year_limits(const vector<int>& Year) {
+        map<int, pair<int, int>> limits;
+        int begin = 0;
+        int year = Year[0];
+        for (int i = 0; i < Year.size(); ++i) {
+            if (Year[i] != year) {
+                limits[year] = pair<int, int>(begin, i-1);
+                year = Year[i];
+                begin = i;
+            }
+        }
+        return limits;
+    }
+
 
     static void separate(const vector<int>& Year, const vector<int>& Mon, const vector<int>& Day,
                   const vector<double>& Qin, const vector<double>& Tin, const vector<double>& Pin,
@@ -219,15 +230,22 @@ namespace grwat {
         }
 
         // Initialize vectors
+        auto w = Qin.size();
 
-        set<int> years(Year.begin(), Year.end());
+        auto years = year_limits(Year);
+
+        cout << endl <<  "YEAR LIMITS:" << endl;
+        for (auto y: years)
+            cout << y.first << ' ' << y.second.first << ' '  << y.second.second << endl;
+
         auto nyears = years.size();
 
-        vector<int> iy(nyears, -99); // indices of water resource years ends
+        vector<int> iy(nyears, -99); // indices of water resource years starts
         vector<int> ny(nyears, 0);
         vector<int> YGaps(nyears, 0);
         vector<int> donep(4, -1); // four criteria of seasonal discharge beginning
         map<int, int> NumGapsY;
+
         auto NumGaps = 0;
         auto y = Year[0];
         auto ng = 0; // number of the first year
@@ -239,7 +257,8 @@ namespace grwat {
         auto iylast = 0;
         donep[3] = y;
 
-        auto w = Qin.size();
+        cout << endl << "POLFINDERS:" << endl;
+
         for (auto l = 0; l < w; l++) { // 177
 
             donep[0] = donep[1] = donep[2] = -1;
@@ -370,7 +389,7 @@ namespace grwat {
             }
         }
 
-        cout << "Water resources year beginnings:" << endl;
+        cout << endl << "YEAR BEGINNINGS:" << endl;
 
 //        Qpol[iy1 + 1] = 1;
 //
