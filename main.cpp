@@ -28,7 +28,6 @@ void read_inputs(string infilehydro, string infilemeteo,
 }
 
 int main() {
-    cout << "Mamba Huyamba\n";
 
     vector<int> Day;
     vector<int> Mon;
@@ -50,5 +49,11 @@ int main() {
     vector<double> Qpb(n, 0);
 
     grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
+
+    auto Qbase = grwat::get_baseflow(Qin);
+
+    for (auto i = 0; i < 150; ++i) {
+        cout << Qbase[i];
+    }
 
 }

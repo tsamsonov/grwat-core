@@ -40,11 +40,63 @@ namespace grwat {
         double polgradMount = 1.5;
     };
 
+    enum basefilter {
+        CHAPMAN,
+        BOUGHTON,
+        JAKEMAN,
+        LYNE,
+        MAU,
+        FUREY
+    };
+
+    static vector<double> get_baseflow(const vector<double>& Qin,
+                                       const double& alpha = 0.925,
+                                       const int& padding = 30,
+                                       const int& passes = 3,
+                                       basefilter method = LYNE) {
+
+
+
+        vector<double> Q(Qin.begin(), Qin.end()); {
+            Q.insert(Q.begin(), Q.begin() + 1, Q.begin() + padding + 1);
+            Q.insert(Q.end(), Q.end() - padding - 1, Q.end() - 1);
+            std::reverse(Q.begin(), Q.begin() + padding);
+            std::reverse(Q.end() - padding, Q.end());
+        }
+
+        auto n = Q.size();
+        vector<double> Qf(n, 0);    // quick flow
+
+        int delta = 1;
+        int begin = 0;
+        int end = n-1;
+        int pass = 0;
+
+        auto inside = [&](int index) {
+            return (delta > 0) ? index <= end : index >= end;
+        };
+
+        while (pass < passes) {
+            Qf[begin] = Q[begin];
+            auto Qbase = vector<double>(n, 0);
+            for (auto i = begin + delta; inside(i); i += delta) {
+                Qf[i] = alpha * Qf[i-delta] + 0.5 * (1 + alpha) * (Q[i] - Q[i-delta]);
+                Qbase[i] = (Qf[i] > 0) ? Q[i] - Qf[i] : Q[i];
+            }
+            std::swap(begin, end);
+            delta = -delta;
+            Q = Qbase;
+            pass++;
+        }
+
+        return vector<double>(Q.begin() + padding, Q.end() - padding);
+    }
+
     static void jitter_parameters(parameters &p,
                                   const parameters &par,
                                   const vector<int> &Sumdonep) {
 
-        // уменьшение параметров в зависимости от того, какой donep не срабатывает
+        // jitter parameters depending on what particular donep does not work effectively
         bool vsebylo = (Sumdonep[0] > 0 and Sumdonep[1] > 0 and Sumdonep[2] > 0) ? 1 : 0;
 
         auto Smallestdonep = min({Sumdonep[0], Sumdonep[1], Sumdonep[2]});
@@ -93,104 +145,6 @@ namespace grwat {
         }
     }
 
-    static bool polfinder(const vector<int> &Year, const vector<int> &Mon, const vector<int> &Day,
-                          const vector<double> &Qin, vector<int> &donep, int &iyY, const int& lstart, const parameters& par) {
-
-        auto p = par; // create a loca copy of parameters for possible changing (should be made on each iteration)
-        auto n = Day.size();
-
-        auto enter_adjustment = true;
-
-        for (int i = 0; i < 100; ++i) { // 1398
-            vector<int> Sumdonep(4, 0);
-
-            for (int l = 0; l < n; ++l) {
-                double polQsum = 0.0;
-
-                donep[0] = donep[1] = donep[2] = -1;
-
-                if (Year[l] == donep[3]) {
-                    if (Mon[l] >= par.polmon1 and Mon[l] <= par.polmon2 and Qin[l] != par.FlagGaps) { // 1417
-
-                        // проверка критерия начала половодья №1 -
-                        // устойчивое увеличение со средним градиентом больше или равном заданному polgrad1
-                        double dQ = 0.0;
-                        for (auto ff = 1; ff <= p.polkol1; ff++)
-                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol1);
-
-                        if (dQ <= p.polgrad1)
-                            donep[0] = -1;
-                        else {
-                            donep[0] = 1;
-                            Sumdonep[0]++;
-                        }
-
-                        // проверка критерия начала половодья №2 -
-                        // устойчивое увеличение не заканчивается polkol2 дней
-                        dQ = 0.0;
-                        for (auto ff = 1; ff <= p.polkol2; ff++)
-                            dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol2);
-
-                        if (dQ <= 0)
-                            donep[1]= -1;
-                        else {
-                            donep[1]= 1;
-                            Sumdonep[1]++;
-                        }
-
-                        if (par.ModeMountain) {
-                            // проверка критерия начала половодья №3 для гор -
-                            // превышение в течении polkolMount1 каждые polkolMount2 дней расхода воды в polgradMount раз
-                            donep[2] = 1;
-                            for (auto ff = 1; ff <= p.polkolMount1; ff++) {
-                                polQsum = 0.0;
-                                for (auto fff = ff; fff <= ff + p.polkolMount2; fff++)
-                                    polQsum = polQsum + Qin[l + fff];
-                                if (polQsum / (Qin[l] * p.polkolMount2) < p.polgradMount)
-                                    donep[2]= -1;
-                            }
-
-                            if (donep[2] == 1)
-                                Sumdonep[2]++;
-                        } else {
-                            // проверка критерия начала половодья №3 для равнинных рек -
-                            // превышение среднего расхода воды за polkol3 дней расхода дня начала половодья (Qin[l]) в  polgrad2 раз
-                            for (auto ff = 1; ff <= p.polkol3; ff++)
-                                polQsum = polQsum + Qin[l + ff - 1];
-
-                            if (polQsum / (Qin[l] * p.polkol3) < p.polgrad2)
-                                donep[2]= -1;
-                            else {
-                                donep[2] = 1;
-                                Sumdonep[2]++;
-                            }
-                        }
-
-                        if (donep[0] == 1 and donep[1] == 1 and donep[2] == 1) {
-                            iyY = lstart + l - 1; // номер последнего члена ряда предыдущего года в общем массиве
-                            donep[3] = Year[l] + 1; // следующее начало половодья уже искать в следующем году
-                        }
-                    }
-                    // SEASONAL FLOOD IS FOUND
-                    if (donep[0] == 1 and donep[1] == 1 and donep[2] == 1 and donep[3] == Year.back() + 1)
-                        return true;
-                }
-            }
-
-            // TODO: check whether this is really neeeded
-            if (donep[0] == 1 and donep[1] == 1 and donep[2] == 1 and donep[3] == Year.back() + 1) {
-                return true;
-            } else if (enter_adjustment) {
-                enter_adjustment = false;
-            }
-
-            jitter_parameters(p, par, Sumdonep);
-
-        }
-
-        return false; // SEASONAL FLOOD NOT FOUND
-    }
-
     static map<int, pair<int, int>> year_limits(const vector<int>& Year) {
         map<int, pair<int, int>> limits;
         int begin = 0;
@@ -205,11 +159,11 @@ namespace grwat {
         return limits;
     }
 
-
     static void separate(const vector<int>& Year, const vector<int>& Mon, const vector<int>& Day,
                   const vector<double>& Qin, const vector<double>& Tin, const vector<double>& Pin,
                   vector<double>& Qgr, vector<double>& Qpol, vector<double>& Qpav,
-                  vector<double>& Qthaw, vector<double>& Qpb, const parameters& par, const int& niter = 100) {
+                  vector<double>& Qthaw, vector<double>& Qpb,
+                  const parameters& par, const int& niter = 100) {
 
         // detect gaps in data
         map<int, int> FactGapsin;
@@ -229,34 +183,19 @@ namespace grwat {
         }
 
         // Initialize vectors
-        auto w = Qin.size();
 
         auto years = year_limits(Year);
-
-        cout << endl <<  "YEAR LIMITS:" << endl;
-        for (auto y: years)
-            cout << y.first << ' ' << y.second.first << ' '  << y.second.second << endl;
-
         auto nyears = years.size();
-
         vector<int> iy(nyears, -99); // indices of water resource years starts
-        vector<int> ny(nyears, 0);
-        vector<int> YGaps(nyears, 0);
-        vector<int> donep(4, -1); // four criteria of seasonal discharge beginning
-        map<int, int> NumGapsY;
+        vector<int> donep(3, -1); // three criteria of seasonal discharge beginning
+        vector<int> sumdonep(3, 0); // sum that is used to assess the effectiveness of each donep in jittering
+        vector<bool> YGaps(nyears, false); // flags if there are gaps in the year
+        map<int, int> NumGapsY; // number of gaps in the year
 
-        auto NumGaps = 0;
-        auto y = Year[0];
-        auto ng = 0; // number of the first year
+        auto ng = 0; // number of the year
         double polQsum = 0.0;
-
-        // auto iy1 = 0;
-        // auto iylast = -1;
-
-        auto iylast = 0;
-        donep[3] = y;
-
-        vector<int> Sumdonep(4, 0);
+        double dQ = 0.0;
+        auto proceed = true;
 
         bool separated = false;
         auto jittered = false;
@@ -268,24 +207,15 @@ namespace grwat {
             jittered = false;
             p = par;
             for (auto iter = 0; iter < niter; ++iter) {
-                Sumdonep[0] = Sumdonep[1] = Sumdonep[2] = 0;
+                sumdonep = {0, 0, 0};
 
                 for (auto l = year.second.first; l <= year.second.second; ++l) { // 177
 
-                    donep[0] = donep[1] = donep[2] = -1;
+                    donep = {-1, -1, -1};
 
-                    if (Qin[l] == par.FlagGaps) { // 185
-                        if (Year[l] != y) {
-                            NumGapsY[y] = NumGaps;
-                            y = Year[l];
-                        }
-                        NumGaps++;
-                    }
-
-//                    if (Year[l] == donep[3]) { //221
                     if (Mon[l] >= p.polmon1 and Mon[l] <= p.polmon2 and Qin[l] != p.FlagGaps) { //223
-                        double dQ = 0.0;
-                        auto proceed = true;
+                        dQ = 0.0;
+                        proceed = true;
                         for (auto ff = 1; ff <= p.polkol1; ff++) {
                             if (Qin[l + ff] == p.FlagGaps or Qin[l + ff - 1] == p.FlagGaps) { // goto 8787
                                 proceed = false;
@@ -300,7 +230,7 @@ namespace grwat {
                                 donep[0] = -1;
                             } else {
                                 donep[0] = 1;
-                                Sumdonep[0]++;
+                                sumdonep[0]++;
                             }
 
                             dQ = 0.0;
@@ -312,7 +242,7 @@ namespace grwat {
                                 donep[1] = -1;
                             } else {
                                 donep[1] = 1;
-                                Sumdonep[1]++;
+                                sumdonep[1]++;
                             }
 
                             if (p.ModeMountain) {
@@ -326,7 +256,7 @@ namespace grwat {
                                 }
 
                                 if (donep[2] == 1)
-                                    Sumdonep[2]++;
+                                    sumdonep[2]++;
 
                             } else {
                                 polQsum = 0.0;
@@ -337,76 +267,17 @@ namespace grwat {
                                     donep[2] = -1;
                                 else {
                                     donep[2] = 1;
-                                    Sumdonep[2]++;
+                                    sumdonep[2]++;
                                 }
                             }
                         }
 
                         if (donep[0] == 1 and donep[1] == 1 and donep[2] == 1) {
-//                        if (ng > 0) {
-//                            iy[ng - 1] = l - 1;
-//                            iylast = ng - 1;
-//                        } else {
-//                            iy1 = l - 1;
-//                        }
-                            iy[ng] = l - 1;
-                            iylast = ng;
-
-                            donep[3] = Year[l] + 1; // search next seasonal flood in the next year
-//                        if (l > 1 and NumGaps > 0) {
-//                            YGaps[ng - 1] = 1;
-//                            NumGaps = 0;
-//                        }
-
-                            if (NumGaps > 0) {
-                                YGaps[ng] = 1;
-                                NumGaps = 0;
-                            }
-                            ng++; // number of years
-
+                            iy[ng] = l;
                             separated = true;
                             break;
                         }
                     }
-//                    }
-
-//                    if (Year[l] > donep[3]) { // 190
-//                        if (NumGapsY[Year[l] - 1] >= 30) {
-//                            iy[ng] = -99;
-//                            // if (ng > 0)
-//                            //   iy[ng - 1] = -99;
-//                            YGaps[ng] = 1;
-//                            YGaps[ng - 1] = 1;
-//                            NumGaps = 0;
-//                            donep[3] = Year[l];
-//                            ng++;
-//                        } else {
-//                            auto begin = (iylast >= 0) ? iy[iylast] + 300 : 0;
-//                            // auto begin = (iylast >=0) ? iy[iylast] + 300 : (iy1 > 0) ? iy1 + 300: 0
-//                            auto lengthcrop = l - begin + 1;
-//                            auto end = begin + lengthcrop - 1;
-//
-//                            // int& iyY = ng > 0 ? iy[ng-1] : iy1;
-//                            int &iyY = iy[ng];
-//
-//                            vector<double> Qcrop(Qin.begin() + begin, Qin.begin() + end);
-//                            vector<int> Yearcrop(Year.begin() + begin, Year.begin() + end);
-//                            vector<int> Moncrop(Mon.begin() + begin, Mon.begin() + end);
-//                            vector<int> Daycrop(Day.begin() + begin, Day.begin() + end);
-//
-//                            // POLFINDER
-//                            std::cout << "Polfinder: " << donep[3] << std::endl;
-//                            auto polfound = polfinder(Yearcrop, Moncrop, Daycrop, Qcrop, donep, iyY, begin, par);
-//                            if (polfound) {
-//                                // iylast = ng - 1;
-//                                iylast = ng;
-//                            } else {
-//                                cout << "Failed" << endl;
-//                                donep[3]++;
-//                            }
-//                            ng++;
-//                        }
-//                    }
                 }
 
                 if (separated) {
@@ -418,21 +289,43 @@ namespace grwat {
                         cout << endl << "POLFINDER: " << year.first << ", ";
                         jittered = true;
                     }
-                    jitter_parameters(p, par, Sumdonep);
+                    jitter_parameters(p, par, sumdonep);
                 }
 
             }
+
+            NumGapsY[year.first] = count(next(Qin.begin(), year.second.first),
+                                         next(Qin.begin(), year.second.second),
+                                         par.FlagGaps);
+            YGaps[ng] = NumGapsY[year.first] > 0;
+            ng++; // number of years
         }
 
-        cout << endl << "YEAR BEGINNINGS:" << endl;
+//        cout << endl <<  "YEAR LIMITS:" << endl;
+//        for (auto y: years)
+//            cout << y.first << ' ' << y.second.first << ' '  << y.second.second << endl;
 
-//        Qpol[iy1 + 1] = 1;
-//
-//        cout << Day[iy1 + 1] << '-' << Mon[iy1 + 1] << '-' << Year[iy1 + 1] << endl;
+        cout << endl << "YEAR BEGINNINGS:" << endl;
+        int j = 1;
 
         for (auto i: iy) {
-            Qpol[i + 1] = 1;
-            cout << Day[i + 1] << '-' << Mon[i + 1] << '-' << Year[i + 1] << endl;
+            Qpol[i] = 1;
+            cout << Day[i] << '-' << Mon[i] << '-' << Year[i] << ' ';
+            if (j % 10 == 0)
+                cout << endl;
+            j++;
+        }
+
+        if (j % 10 == 0)
+            cout << endl;
+
+        if (FactGapsin.size() > 0) {
+            cout << endl << "MISSING VALUES:" << endl;
+            for (auto g: FactGapsin) {
+                cout << g.second << " values starting from " << Day[g.first] << '-' << Mon[g.first] << '-' << Year[g.first] << endl;
+            }
+        } else {
+            cout << endl << "NO GAPS DETECTED" << endl;
         }
     }
 }
