@@ -183,10 +183,12 @@ namespace grwat {
             i++;
         }
 
-        // Initialize vectors
+        // WATER-RESOURCE YEARS
 
         auto years = year_limits(Year);
         auto nyears = years.size();
+        auto ndays = Qin.size();
+
         vector<int> iy(nyears, -99); // indices of water resource years starts
         vector<int> donep(3, -1); // three criteria of seasonal discharge beginning
         vector<int> sumdonep(3, 0); // sum that is used to assess the effectiveness of each donep in jittering
@@ -328,6 +330,57 @@ namespace grwat {
         } else {
             cout << endl << "NO GAPS DETECTED" << endl;
         }
+
+        std::vector<double> deltaQ(ndays, 0);
+        std::vector<double> gradQ(ndays, 0);
+
+        double dQabs = 0.0, dQgr = 0.0, dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
+        int nlast = 0;
+
+        for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
+            auto start = iy[i];
+            auto end = (i < nyears-1) ? iy[i+1] - 1 : ndays-1;
+            auto nydays = end - start;
+
+            // position of the maximum discharge inside year
+            auto nmax = distance(max_element(Qin.begin() + start, Qin.begin() + end), Qin.begin());
+            auto Qmax = Qin[nmax];
+
+            // GROUNDWATER DISCHARGE
+            for (int n = start; n < end; ++j) {
+                deltaQ[n] = Qin[n+1] - Qin[n];
+                gradQ[n] = 100 * deltaQ[n] / Qin[n];
+
+                if (n == start || n == end-1) { // ground in first and last is equal to Qin
+                    Qgr[n] = 0;
+                    Qgrlast1 = Qin[n];
+                    Qgrlast = Qin[n];
+                    nlast = n;
+                } else {
+                    if (!par.ModeMountain && n == nmax) { // TODO: replace with curved interp
+                        Qgr[n] = 0;
+                    }
+
+                    dQ = abs(Qin[n - 1] - Qin[n]) / Qin[n - 1] * 100;
+                    dQabs = abs(Qin[n - 1] - Qin[n]);
+                    dQgr = -100 * (Qgrlast - Qin[n]) / Qgrlast;
+                    dQgr1 = -100 * (Qgrlast1 - Qin[n]) / Qgrlast1;
+                    dQgr2 = abs(100 * (Qgrlast - Qin[n]) / ((n - nlast + 1) * Qgrlast));
+                    dQgr2abs = abs((Qgrlast - Qin[n]) / (n - nlast + 1));
+
+                    if (Qin[n] > Qgrlast) {
+                        if (n - nmax > par.prodspada and (dQ > par.grad or dQgr1 > par.kdQgr1 or dQgr2 > par.grad or dQabs > par.gradabs or dQgr2abs > par.gradabs))
+                            continue;
+                        else if(dQ > par.grad1 or dQgr2 > par.grad1 or dQgr1 > par.kdQgr1 or dQabs > par.gradabs or dQgr2abs > par.gradabs)
+                            continue;
+                    } else {
+
+                    }
+                }
+            }
+
+        }
+
     }
 }
 
