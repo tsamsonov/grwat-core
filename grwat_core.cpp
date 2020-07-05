@@ -333,6 +333,7 @@ namespace grwat {
 
         std::vector<double> deltaQ(ndays, 0);
         std::vector<double> gradQ(ndays, 0);
+        std::vector<int> polend(nyears, 0);
 
         double dQabs = 0.0, dQgr = 0.0, dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
         int nlast = 0;
@@ -345,6 +346,7 @@ namespace grwat {
             // position of the maximum discharge inside year
             auto nmax = distance(max_element(Qin.begin() + start, Qin.begin() + end), Qin.begin());
             auto Qmax = Qin[nmax];
+            int ngrpor = 0;
 
             // GROUNDWATER DISCHARGE
             for (int n = start; n < end; ++j) {
@@ -368,14 +370,29 @@ namespace grwat {
                     dQgr2 = abs(100 * (Qgrlast - Qin[n]) / ((n - nlast + 1) * Qgrlast));
                     dQgr2abs = abs((Qgrlast - Qin[n]) / (n - nlast + 1));
 
-                    if (Qin[n] > Qgrlast) {
-                        if (n - nmax > par.prodspada and (dQ > par.grad or dQgr1 > par.kdQgr1 or dQgr2 > par.grad or dQabs > par.gradabs or dQgr2abs > par.gradabs))
-                            continue;
-                        else if(dQ > par.grad1 or dQgr2 > par.grad1 or dQgr1 > par.kdQgr1 or dQabs > par.gradabs or dQgr2abs > par.gradabs)
+
+                    if (Qin[n] > Qgrlast or n > nlast + 20) {
+                        auto con1 = (n - nmax > par.prodspada) and
+                                    (dQ > par.grad or dQgr1 > par.kdQgr1 or dQgr2 > par.grad or
+                                     dQabs > par.gradabs or dQgr2abs > par.gradabs);
+                        auto con2 = dQ > par.grad1 or dQgr2 > par.grad1 or dQgr1 > par.kdQgr1 or
+                                    dQabs > par.gradabs or dQgr2abs > par.gradabs;
+                        if (con1 or con2)
                             continue;
                     } else {
-
+                        auto con1 = dQ > 20 * par.grad or dQgr1 > 20 * par.kdQgr1 or dQgr2 > 20 * par.grad;
+                        auto con2 = abs(Qin[n + 1] - Qin[n - 1]) < abs(Qin[n + 1] - Qin[n]);
+                        if (con1 and con2)
+                            continue;
                     }
+
+                    Qgr[n] = Qin[n];
+                    if (n > nmax)
+                        ngrpor++;
+
+                    if (ngrpor == 1)
+                        polend[i] = n;
+
                 }
             }
 
