@@ -341,7 +341,7 @@ namespace grwat {
         for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
             auto start = iy[i];
             auto end = (i < nyears-1) ? iy[i+1] - 1 : ndays-1;
-            auto nydays = end - start;
+            auto ny = end - start;
 
             // position of the maximum discharge inside year
             auto nmax = distance(max_element(Qin.begin() + start, Qin.begin() + end), Qin.begin());
@@ -393,11 +393,37 @@ namespace grwat {
                     if (ngrpor == 1)
                         polend[i] = n;
 
+                    Qgrlast = Qin[n];
+                    nlast = n;
                 }
             }
 
-        }
+            // linear interpolation of Qgr to zero under the maximum year discharge
+            std::vector<double> Qy(ny, 0);
+            std::vector<double> Qygr(ny, 0);
 
+            for (int k = start; k < end; ++k) {
+                if (Qgr[k] < 0) {
+                    for (int kk = k; kk < ny; ++kk) {
+                        if (Qgr[kk] >=0) {
+                            Qgr[k] = Qgr[k - 1] + (Qgr[kk] - Qgr[k - 1]) / (kk - k + 1 + 1);
+                            break;
+                        }
+                    }
+                    dQ = abs(Qin[k - 1] - Qin[k]) / Qin[k - 1] * 100;
+
+                    auto con1 = Qgr[k] > Qin[k];
+                    auto con2 = dQ > 20 * par.grad;
+                    auto con3 = abs(Qin[k + 1] - Qin[k - 1]) < abs(Qin[k + 1] - Qin[k]);
+
+                    if (con1 and not (con2 and con3))
+                        Qgr[k] = Qin[k];
+                }
+
+                Qygr[i] = Qygr[i] + Qgr[k] / ny;
+                Qy[i] = Qy[i] + Qin[k] / ny;
+            }
+        }
     }
 }
 
