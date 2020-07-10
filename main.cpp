@@ -50,10 +50,8 @@ int main() {
 
     grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
 
-    auto Qbase = grwat::get_baseflow(Qin);
-
-    for (auto i = 0; i < 150; ++i) {
-        cout << Qbase[i];
+    for (auto i = 0; i < 365; ++i) {
+        cout << Qgr[i] << ' ';
     }
 
 }
