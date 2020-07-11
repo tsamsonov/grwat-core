@@ -342,13 +342,13 @@ namespace grwat {
 
         for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
             auto start = (i > 0) ? iy[i] : 0;
-            auto end = (i < nyears-1) ? iy[i+1] - 1 : ndays-1;
+            auto end = (i < nyears-1) ? iy[i+1] : ndays-1;
             auto ny = end - start;
 
             std::cout << "Year " << i + 1 << " from " << nyears << std::endl;
 
             // position of the maximum discharge inside year
-            auto nmax = distance(max_element(Qin.begin() + start, Qin.begin() + end), Qin.begin());
+            auto nmax = distance(Qin.begin(), max_element(Qin.begin() + start, Qin.begin() + end));
             auto Qmax = Qin[nmax];
             int ngrpor = 0;
 
@@ -408,7 +408,7 @@ namespace grwat {
 
             for (int k = start; k < end; ++k) {
                 if (Qgr[k] == 0) {
-                    for (int kk = k; kk < ny; ++kk) {
+                    for (int kk = k; kk < end; ++kk) {
                         if (Qgr[kk] > 0) {
                             Qgr[k] = Qgr[k - 1] + (Qgr[kk] - Qgr[k - 1]) / (kk - k + 1);
                             break;
