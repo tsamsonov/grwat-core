@@ -335,10 +335,23 @@ namespace grwat {
         std::vector<double> gradQ(ndays, 0);
         std::vector<int> polend(nyears, 0);
 
+        // event flags
+        std::vector<int> Psums(ndays, 0);  // is flood
+        std::vector<int> Tsrs(ndays, 0);  // is flood
+        std::vector<bool> FlagsPcr(ndays, false);  // is flood
+        std::vector<bool> FlagsPlusTemp(ndays, false); // is thaw
+        std::vector<bool> FlagsMinusTemp(ndays, false); // is thaw
+        std::vector<int> FactPcr(nyears, 0); // number of flood days
+        std::vector<int> FactPlusTemp(nyears, 0); // number of thaw days
+        std::vector<int> FactMinusTemp(nyears, 0); // number of thaw days
+        int HalfSt = 0.5 * (p.nPav - 1);
+        int HalfStZ = 0.5 * (p.nZam - 1);
+        double Psumi, Tsri;
+
         double dQabs = 0.0, dQgr = 0.0, dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
         int nlast = 0;
 
-        std::cout << "SEPARATING GROUNDWATER" << std::endl;
+        std::cout << std::endl << "SEPARATING DISCHARGE" << std::endl;
 
         for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
             auto start = (i > 0) ? iy[i] : 0;
@@ -426,6 +439,52 @@ namespace grwat {
 
                 Qygr[i] = Qygr[i] + Qgr[k] / ny;
                 Qy[i] = Qy[i] + Qin[k] / ny;
+            }
+
+            // FLOODS AND THAWS SEPARATION
+
+            // Check rain and thaws
+            for (int m = start + HalfSt; m < end - HalfSt; ++m) {
+
+//                Psumi = 0;
+//                Tsri = 0;
+//                for (int u = m - HalfSt; u <= m + HalfSt; u++) {
+//                    Psumi += Pin[u];
+//                    Tsri += Tin[u] / p.nPav;
+//                }
+
+                Psumi = std::accumulate(Pin.begin() + m - HalfSt, Pin.begin() + m + HalfSt, 0);
+                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0) / p.nPav;
+
+                Psums[m] = Psumi;
+
+                if (Psumi >= p.Pcr and Tsri >= p.Tcr1) { // critical rain
+                    FactPcr[i]++;
+                    FlagsPcr[m] = true;
+                }
+
+                Tsrs[m] = Tsri;
+
+                if (Tsri >= p.Tcr2) { // substantial plus temp
+                    FactPlusTemp[i]++;
+                    FlagsPlusTemp[m] = true;
+                }
+            }
+
+            // Check frosts
+            for (int m = start + HalfStZ; m < end - HalfStZ; ++m) {
+
+//                Tsri = 0;
+//                for (int u = m - HalfStZ; u < m + HalfStZ; ++u) {
+//                    Tsri += Tin[u] / p.nZam;
+//                }
+
+                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0) / p.nPav;
+
+                if (Tsri < p.Tzam) {
+                    FactMinusTemp[i]++;
+                    FlagsMinusTemp[m] = true;
+                }
             }
         }
     }
