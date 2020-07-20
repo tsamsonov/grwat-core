@@ -453,8 +453,8 @@ namespace grwat {
 //                    Tsri += Tin[u] / p.nPav;
 //                }
 
-                Psumi = std::accumulate(Pin.begin() + m - HalfSt, Pin.begin() + m + HalfSt, 0);
-                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0) / p.nPav;
+                Psumi = std::accumulate(Pin.begin() + m - HalfSt, Pin.begin() + m + HalfSt, 0.0);
+                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0.0) / p.nPav;
 
                 Psums[m] = Psumi;
 
@@ -479,7 +479,7 @@ namespace grwat {
 //                    Tsri += Tin[u] / p.nZam;
 //                }
 
-                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0) / p.nPav;
+                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0.0) / p.nPav;
 
                 if (Tsri < p.Tzam) {
                     FactMinusTemp[i]++;
