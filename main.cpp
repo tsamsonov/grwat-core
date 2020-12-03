@@ -36,7 +36,9 @@ int main() {
     vector<double> Tin;
     vector<double> Pin;
 
-    read_inputs("in.txt", "inmeteo.txt", Day, Mon, Year, Qin, Tin, Pin);
+    double size = 3;
+
+    read_inputs("/Users/tsamsonov/GitHub/grwat-core/in.txt", "/Users/tsamsonov/GitHub/grwat-core/inmeteo.txt", Day, Mon, Year, Qin, Tin, Pin);
 
     grwat::parameters p;
 

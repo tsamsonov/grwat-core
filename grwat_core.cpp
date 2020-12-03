@@ -344,6 +344,15 @@ namespace grwat {
         std::vector<int> FactPcr(nyears, 0); // number of flood days
         std::vector<int> FactPlusTemp(nyears, 0); // number of thaw days
         std::vector<int> FactMinusTemp(nyears, 0); // number of thaw days
+        std::vector<int> startPol(nyears, 0); // number of seasonal flood begin day
+
+        int LocMax1;
+        int Flex1;
+        int Bend1;
+        int Flex2;
+        int Bend2;
+        double Qo;
+
         int HalfSt = 0.5 * (p.nPav - 1);
         int HalfStZ = 0.5 * (p.nZam - 1);
         double Psumi, Tsri;
@@ -486,6 +495,149 @@ namespace grwat {
                     FlagsMinusTemp[m] = true;
                 }
             }
+
+            startPol[i] = 1;
+            LocMax1 = 0;
+            Flex1 = 0;
+            Bend1 = nmax;
+            bool minus_found = false;
+            for (auto p = nmax-2; p > startPol[i]; --p) {
+                int FlexPrev = 0;
+                if (p < Bend1) {
+                    if ((deltaQ[p] <= -Qin[nmax] * par.SignDelta) or ((deltaQ[p] + deltaQ[p-1]) <= -Qin[nmax] * par.SignDelta)) {
+                        for (auto pp = p; pp <= nmax-2; ++pp) {
+                            if (deltaQ[pp] > 0) {
+                                Flex1 = pp;
+                                break;
+                            }
+                        }
+                    }
+                    if (Flex1 > 0) {
+                        for (auto u = Flex1; u > startPol[i]; --u) { // 602
+                            if((deltaQ[u] <= -Qin[nmax] * par.SignDelta * 0.5) or ((deltaQ[u] + deltaQ[u - 1]) <= -Qin[nmax] * par.SignDelta * 0.5)) {
+                                for (auto pp = u; p <= Flex1; ++pp) {
+                                    if (deltaQ[pp] > 0) {
+                                        FlexPrev = pp;
+                                    }
+                                }
+                            }
+                        } // 611
+
+                        if (FlexPrev > 0) {
+                            LocMax1 = std::distance(Qin.begin() + FlexPrev, max_element(Qin.begin() + FlexPrev, Qin.begin() + Flex1)) + FlexPrev - 1;
+                        } else {
+                            LocMax1 = std::distance(Qin.begin(), max_element(Qin.begin(), Qin.begin() + Flex1));
+                        } // 617
+
+                        // Frosts
+                        for (auto pp = LocMax1 - HalfStZ; pp < Flex1; ++pp) {
+                            if (FlagsMinusTemp[pp] == true) {
+                                startPol[i] = Flex1;
+                                auto z = -log(Qin[Flex1] / Qin[LocMax1]) / (Flex1 - LocMax1);
+                                Qo = Qin[LocMax1] / exp(-z * LocMax1);
+
+                                for (auto qq = 1; qq < Flex1; ++qq) {
+                                    Qthaw[qq] = Qin[qq] - Qgr[qq];
+                                }
+
+                                for (auto qq = Flex1; qq < nmax*2; ++qq) {
+                                    if (Qo * exp(-z * qq) <= Qgr[qq]) {
+                                        break;
+                                    }
+                                    Qthaw[qq] = Qo * exp(-z * qq) - Qgr[qq];
+                                }
+                                minus_found = true;
+                                break;
+                             }
+                        }
+
+                    }
+
+                }
+
+                if (minus_found)
+                    break;
+            }
+
+            if (!minus_found) { // 656
+                for (auto pp = LocMax1; pp > 2; --pp) {
+                    if (Qin[pp] < Qin[Flex1] and (deltaQ[pp - 1] <= ((Qin[Flex1] - Qin[pp]) / (Flex1 - pp)))) {
+                        Bend1 = pp;
+                        break;
+                    }
+                }
+
+                for (auto pp = Bend1 - 2 * HalfSt; pp < LocMax1; ++pp) {
+                    if (FlagsPcr[pp] == 1) { // Rain
+                        auto afunc = (Qin[Flex1] - Qin[Bend1]) / (Flex1 - Bend1);
+                        auto bfunc = Qin[Flex1] - afunc * Flex1;
+
+                        for (auto qq = Bend1; qq < Flex1; ++qq) {
+                            Qpav[qq] = Qin[qq] - (afunc * qq + bfunc);
+                        }
+                    }
+                }
+            }
+
+            Flex2 = 0;
+            Bend2 = 0;
+
+            for (auto p = nmax; p < polend[i] - 1; ++p) {
+                if (p > Bend2 and
+                  ((deltaQ[p] >= Qin[nmax] * par.SignDelta) or ((deltaQ[p] + deltaQ[p + 1]) >= Qin[nmax] * par.SignDelta))) {
+                    for (auto pp = p + 1; pp > nmax; --pp) {
+                        if (deltaQ[pp] < 0) {
+                            Flex2 = pp + 1;
+                            break;
+                        }
+                    }
+
+                    for (auto pp = Flex2 + 1; pp < polend[i]; ++pp) {
+                        if ((Qin[pp] < Qin[Flex2] and (min(deltaQ[pp], deltaQ[pp - 1]) >= (Qin[pp] - Qin[Flex2]) / (pp - Flex2))) or (pp == polend[i])) {
+                            Bend2 = pp;
+                            for (auto ppp = Bend2 - HalfSt; ppp < Flex2 - 2*HalfSt; --ppp) {
+                                if (FlagsPcr[ppp] == 1) {
+                                    auto z = -log(Qin[Bend2] / Qin[Flex2]) / (Bend2 - Flex2);
+                                    Qo = Qin[Flex2] / exp(-z * Flex2);
+                                    for (auto qq = Flex2; qq > Bend2; --qq) {
+                                        Qpav[qq] = Qin[qq] - Qo * exp(-z * qq);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
