@@ -42,6 +42,8 @@ int main() {
 
     grwat::parameters p;
 
+    p.nPav = 5;
+
     auto n = Qin.size();
 
     vector<double> Qgr(n, 0);
@@ -50,10 +52,14 @@ int main() {
     vector<double> Qthaw(n, 0);
     vector<double> Qpb(n, 0);
 
+//    for (auto p: Pin) {
+//        std::cout << p << std::endl;
+//    }
+
     grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
 
-    for (auto i = 0; i < 365; ++i) {
-        cout << Qgr[i] << ' ';
+    for (auto value : Qpav) {
+        cout << value << ' ';
     }
 
 }

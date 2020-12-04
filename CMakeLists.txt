@@ -3,4 +3,9 @@ project(grwat_core)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(grwat_core main.cpp)
+file(GLOB SOURCES
+    grwat_core.cpp
+    main.cpp
+)
+
+add_executable(grwat_core ${SOURCES})
