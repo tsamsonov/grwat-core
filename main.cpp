@@ -38,7 +38,9 @@ int main() {
 
     double size = 3;
 
-    read_inputs("/Users/tsamsonov/GitHub/grwat-core/in.txt", "/Users/tsamsonov/GitHub/grwat-core/inmeteo.txt", Day, Mon, Year, Qin, Tin, Pin);
+    read_inputs("/Users/tsamsonov/GitHub/grwat-core/in.txt",
+                "/Users/tsamsonov/GitHub/grwat-core/inmeteo.txt",
+                Day, Mon, Year, Qin, Tin, Pin);
 
     grwat::parameters p;
 
@@ -58,7 +60,7 @@ int main() {
 
     grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
 
-    for (auto value : Qpav) {
+    for (auto value : Qpol) {
         cout << value << ' ';
     }
 
