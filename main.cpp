@@ -49,19 +49,21 @@ int main() {
     auto n = Qin.size();
 
     vector<double> Qgr(n, 0);
+    vector<double> Quick(n, 0);
     vector<double> Qpol(n, 0);
     vector<double> Qpav(n, 0);
     vector<double> Qthaw(n, 0);
     vector<double> Qpb(n, 0);
+    vector<int> Qtype(n, 0);
 
 //    for (auto p: Pin) {
 //        std::cout << p << std::endl;
 //    }
 
-    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Qpol, Qpav, Qthaw, Qpb, p);
+    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Qtype, p);
 
-    for (auto value : Qpol) {
-        cout << value << ' ';
-    }
+//    for (auto value : Qtype) {
+//        cout << value << ' ';
+//    }
 
 }
