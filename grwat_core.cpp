@@ -4,6 +4,7 @@
 #include <iostream>
 #include <random>
 #include <algorithm>
+#include <functional>
 using namespace std;
 
 namespace grwat {
@@ -42,28 +43,112 @@ namespace grwat {
     };
 
     enum basefilter {
-        CHAPMAN,
-        BOUGHTON,
-        JAKEMAN,
-        LYNE,
-        MAU,
-        FUREY
+        MAXWELL = 1,
+        BOUGHTON = 2,
+        JAKEMAN = 3,
+        LYNE = 4,
+        CHAPMAN = 5,
+        FUREY = 6,
+        GRWAT = 7
     };
 
-    static vector<double> get_baseflow(const vector<double>& Qin,
-                                       const double& alpha = 0.925,
-                                       const int& padding = 30,
-                                       const int& passes = 3,
-                                       basefilter method = LYNE) {
+    static double baseflow_lyne(const double& Qfi_1,
+                                const double& Qi,
+                                const double& Qi_1,
+                                const double& alpha = 0.925) {
+        return Qfi_1 * alpha + 0.5 * (Qi - Qi_1) * (1 + alpha);
+    }
 
+    static double baseflow_chapman(const double& Qfi_1,
+                                   const double& Qi,
+                                   const double& Qi_1,
+                                   const double& alpha = 0.925) {
+        return Qfi_1 * (3 * alpha - 1) / (3 - alpha) + 2 * (Qi - alpha * Qi_1) / (3 - alpha);
+    }
 
+    static double baseflow_maxwell(const double& Qbi_1,
+                                   const double& Qi,
+                                   const double& Qi_1,
+                                   const double& k = 0.925,
+                                   const double& C = 1,
+                                   const double& alpha = 1) {
+        return Qbi_1 * k / (2 - k) + Qi * (1 - k) / (2 - k);
+    }
 
+    static double baseflow_boughton(const double& Qbi_1,
+                                    const double& Qi,
+                                    const double& Qi_1,
+                                    const double& k = 0.925,
+                                    const double& C = 1,
+                                    const double& alpha = 1) {
+        return Qbi_1 * k / (1 + C) + Qi * C / (1 + C);
+    }
+
+    static double baseflow_jakeman(const double& Qbi_1,
+                                   const double& Qi,
+                                   const double& Qi_1,
+                                   const double& k = 0.925,
+                                   const double& C = 1,
+                                   const double& alpha = 1) {
+        return Qbi_1 * k / (1 + C) + (Qi + alpha * Qi_1) * C / (1 + C);
+    }
+
+    static vector<double> pad_vector(const vector<double>& Qin, const int& padding) {
         vector<double> Q(Qin.begin(), Qin.end()); {
             Q.insert(Q.begin(), Q.begin() + 1, Q.begin() + padding + 1);
             Q.insert(Q.end(), Q.end() - padding - 1, Q.end() - 1);
             std::reverse(Q.begin(), Q.begin() + padding);
             std::reverse(Q.end() - padding, Q.end());
         }
+        return Q;
+    }
+
+    static vector<double> get_baseflow_singlepass(const vector<double>& Qin,
+                                                 const double& k = 0.975,
+                                                 const double& C = 0.05,
+                                                 const double& alpha = -0.5,
+                                                 const int& padding = 30,
+                                                 basefilter method = MAXWELL) {
+        map<basefilter, std::function<double(const double&,
+                const double&,
+                const double&,
+                const double&,
+                const double&,
+                const double&)>> baseflow_singlepass = {
+            {MAXWELL, baseflow_maxwell},
+            {BOUGHTON, baseflow_boughton},
+            {JAKEMAN, baseflow_jakeman}
+        };
+
+        auto Q = pad_vector(Qin, padding);
+        int n = Q.size();
+
+        auto Qb = vector<double>(n, 0);
+        Qb[0] = Q[0];
+
+        for (auto i = 1; i < n; i += 1) {
+            Qb[i] = baseflow_singlepass[method](Qb[i-1], Q[i], Q[i-1], k, C, alpha);
+        }
+
+        return vector<double>(Qb.begin() + padding, Qb.end() - padding);
+    }
+
+    static vector<double> get_baseflow_recursive(const vector<double>& Qin,
+                                       const double& alpha = 0.925,
+                                       const int& padding = 30,
+                                       const int& passes = 3,
+                                       basefilter method = LYNE) {
+
+        map<basefilter, std::function<double(
+                const double&,
+                const double&,
+                const double&,
+                const double&)>> baseflow_recursive = {
+                {CHAPMAN, baseflow_chapman},
+                {LYNE, baseflow_lyne}
+        };
+
+        auto Q = pad_vector(Qin, padding);
 
         auto n = Q.size();
         vector<double> Qf(n, 0);    // quick flow
@@ -81,7 +166,8 @@ namespace grwat {
             Qf[begin] = Q[begin];
             auto Qbase = vector<double>(n, 0);
             for (auto i = begin + delta; inside(i); i += delta) {
-                Qf[i] = alpha * Qf[i-delta] + 0.5 * (1 + alpha) * (Q[i] - Q[i-delta]);
+//                Qf[i] = alpha * Qf[i-delta] + 0.5 * (1 + alpha) * (Q[i] - Q[i-delta]);
+                Qf[i] = baseflow_recursive[method](Qf[i-delta], Q[i], Q[i-delta], alpha);
                 Qbase[i] = (Qf[i] > 0) ? Q[i] - Qf[i] : Q[i];
             }
             std::swap(begin, end);
@@ -157,30 +243,44 @@ namespace grwat {
                 begin = i;
             }
         }
+        limits[year] = pair<int, int>(begin, Year.size()-1); // last year
         return limits;
     }
 
     static void separate(const vector<int>& Year, const vector<int>& Mon, const vector<int>& Day,
                   const vector<double>& Qin, const vector<double>& Tin, const vector<double>& Pin,
                   vector<double>& Qgr, vector<double>& Quick, vector<double>& Qpol, vector<double>& Qpav,
-                  vector<double>& Qthaw, vector<double>& Qpb, vector<int>& Qtype,
-                  const parameters& par, const int& niter = 100) {
+                  vector<double>& Qthaw, vector<double>& Qpb, vector<int>& Type, vector<int>& Hyear,
+                  const parameters& par) {
+
+        // TODO: move these parameters into par
+        int niter = 100;
+        double alpha = 0.925;
+        basefilter method = LYNE;
+        int passes = 3;
+        double K = 0.975;
+        double C = 0.05;
+        int padding = 30;
+
+//        std::copy(Year.begin(), Year.end(), Hyear.begin());
+//        for (auto& y : Hyear)
+//            y -= 1;
 
         // detect gaps in data
         map<int, int> FactGapsin;
-        int i = 0;
+        int pos = 0;
         for (auto it = Qin.begin(); it != Qin.end(); ++it) {
             if (*it == par.FlagGaps) {
-                int k = 0;
+                int glen = 0;
                 while (it != Qin.end()) {
                     if (*it != par.FlagGaps) break;
-                    k++;
+                    glen++;
                     it++;
                 }
-                FactGapsin[i] = k;
-                i += k;
+                FactGapsin[pos] = glen;
+                pos += glen;
             }
-            i++;
+            pos++;
         }
 
         // WATER-RESOURCE YEARS
@@ -202,13 +302,13 @@ namespace grwat {
 
         bool separated = false;
         auto jittered = false;
-        grwat::parameters p = par;
+        grwat::parameters par_new = par;
 
 
         for (auto year: years) {
             separated = false;
             jittered = false;
-            p = par;
+            par_new = par;
             for (auto iter = 0; iter < niter; ++iter) {
                 sumdonep = {0, 0, 0};
 
@@ -216,20 +316,20 @@ namespace grwat {
 
                     donep = {-1, -1, -1};
 
-                    if (Mon[l] >= p.polmon1 and Mon[l] <= p.polmon2 and Qin[l] != p.FlagGaps) { //223
+                    if (Mon[l] >= par_new.polmon1 and Mon[l] <= par_new.polmon2 and Qin[l] != par_new.FlagGaps) { //223
                         dQ = 0.0;
                         proceed = true;
-                        for (auto ff = 1; ff <= p.polkol1; ff++) {
-                            if (Qin[l + ff] == p.FlagGaps or Qin[l + ff - 1] == p.FlagGaps) { // goto 8787
+                        for (auto ff = 1; ff <= par_new.polkol1; ff++) {
+                            if (Qin[l + ff] == par_new.FlagGaps or Qin[l + ff - 1] == par_new.FlagGaps) { // goto 8787
                                 proceed = false;
                                 break;
                             } else {
-                                dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol1);
+                                dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * par_new.polkol1);
                             }
                         }
 
                         if (proceed) {
-                            if (dQ <= p.polgrad1) {
+                            if (dQ <= par_new.polgrad1) {
                                 donep[0] = -1;
                             } else {
                                 donep[0] = 1;
@@ -237,8 +337,8 @@ namespace grwat {
                             }
 
                             dQ = 0.0;
-                            for (auto ff = 1; ff <= p.polkol2; ff++) {
-                                dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * p.polkol2);
+                            for (auto ff = 1; ff <= par_new.polkol2; ff++) {
+                                dQ = dQ + 100 * (Qin[l + ff] - Qin[l + ff - 1]) / (Qin[l + ff - 1] * par_new.polkol2);
                             }
 
                             if (dQ <= 0) {
@@ -248,13 +348,13 @@ namespace grwat {
                                 sumdonep[1]++;
                             }
 
-                            if (p.ModeMountain) {
+                            if (par_new.ModeMountain) {
                                 donep[2] = 1;
-                                for (auto ff = 1; ff <= p.polkolMount1; ff++) {
+                                for (auto ff = 1; ff <= par_new.polkolMount1; ff++) {
                                     polQsum = 0.0;
-                                    for (auto fff = ff; fff <= p.polkolMount2; fff++)
+                                    for (auto fff = ff; fff <= par_new.polkolMount2; fff++)
                                         polQsum = polQsum + Qin[l + fff];
-                                    if (polQsum / (Qin[l] * p.polkolMount2) < p.polgradMount)
+                                    if (polQsum / (Qin[l] * par_new.polkolMount2) < par_new.polgradMount)
                                         donep[2] = -1;
                                 }
 
@@ -263,10 +363,10 @@ namespace grwat {
 
                             } else {
                                 polQsum = 0.0;
-                                for (auto ff = 1; ff <= p.polkol3; ff++)
+                                for (auto ff = 1; ff <= par_new.polkol3; ff++)
                                     polQsum = polQsum + Qin[l + ff - 1];
 
-                                if (polQsum / (Qin[l] * p.polkol3) < p.polgrad2)
+                                if (polQsum / (Qin[l] * par_new.polkol3) < par_new.polgrad2)
                                     donep[2] = -1;
                                 else {
                                     donep[2] = 1;
@@ -292,7 +392,7 @@ namespace grwat {
 //                        cout << endl << "POLFINDER: " << year.first << ", ";
                         jittered = true;
                     }
-                    jitter_parameters(p, par, sumdonep);
+                    jitter_parameters(par_new, par, sumdonep);
                 }
 
             }
@@ -310,9 +410,12 @@ namespace grwat {
 
 //        cout << endl << "YEAR BEGINNINGS:" << endl;
         int j = 1;
-
-        for (auto i: iy) {
-            Qpol[i] = 1;
+        auto ny = iy.size();
+        for (auto i = 0; i < ny; i++) {
+            auto idx1 = iy[i];
+            auto idx2 = i < ny-1 ? iy[i+1] : ndays;
+            Qpol[idx1] = 1;
+            std::fill(Hyear.begin() + idx1, Hyear.begin() + idx2, Year[idx1]);
 //            cout << Day[i] << '-' << Mon[i] << '-' << Year[i] << ' ';
 //            if (j % 10 == 0)
 //                cout << endl;
@@ -322,14 +425,14 @@ namespace grwat {
         if (j % 10 == 0)
             cout << endl;
 
-        if (FactGapsin.size() > 0) {
+//        if (FactGapsin.size() > 0) {
 //            cout << endl << "MISSING VALUES:" << endl;
-            for (auto g: FactGapsin) {
+//            for (auto g: FactGapsin) {
 //                cout << g.second << " values starting from " << Day[g.first] << '-' << Mon[g.first] << '-' << Year[g.first] << endl;
-            }
-        } else {
+//            }
+//        } else {
 //            cout << endl << "NO GAPS DETECTED" << endl;
-        }
+//        }
 
         std::vector<double> deltaQ(ndays, 0);
         std::vector<double> gradQ(ndays, 0);
@@ -346,8 +449,8 @@ namespace grwat {
         std::vector<int> FactMinusTemp(nyears, 0); // number of thaw days
         std::vector<int> startPol(nyears, 0); // number of seasonal flood begin day
         // linear interpolation of Qgr
-        std::vector<double> Qy(nyears, 0);
-        std::vector<double> Qygr(nyears, 0);
+//        std::vector<double> Qy(nyears, 0);
+//        std::vector<double> Qygr(nyears, 0);
         std::vector<int> SummerEnd(nyears, 0);
 
         std::fill(Qgr.begin(), Qgr.end(), -1);
@@ -359,8 +462,8 @@ namespace grwat {
         int Bend2;
         double Qo;
 
-        int HalfSt = 0.5 * (p.nPav - 1);
-        int HalfStZ = 0.5 * (p.nZam - 1);
+        int HalfSt = 0.5 * (par_new.nPav - 1);
+        int HalfStZ = 0.5 * (par_new.nZam - 1);
         double Psumi, Tsri;
 
         double dQabs = 0.0, dQgr = 0.0, dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
@@ -368,20 +471,25 @@ namespace grwat {
 
 //        std::cout << std::endl << "SEPARATING DISCHARGE" << std::endl;
 
+//        if (method != GRWAT) {
+//            Qgr =
+//        }
+
         for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
             auto start = (i > 0) ? iy[i] : 0;
             auto end = (i < nyears-1) ? iy[i+1] : ndays-1;
-            auto ny = end - start;
+//            auto ny = end - start;
 
 //            std::cout << "Year " << i + 1 << " from " << nyears << std::endl;
 
             // position of the maximum discharge inside year
             auto nmax = start + distance(Qin.begin() + start, max_element(Qin.begin() + start, Qin.begin() + start + 2*par.prodspada));
-            auto Qmax = Qin[nmax];
+//            auto Qmax = Qin[nmax];
             int ngrpor = 0;
 
             // GROUNDWATER DISCHARGE
 //            std::cout << "Groundwater" << std::endl;
+
             for (int n = start; n < end; ++n) {
                 deltaQ[n] = Qin[n+1] - Qin[n];
                 gradQ[n] = 100 * deltaQ[n] / Qin[n];
@@ -392,8 +500,8 @@ namespace grwat {
                     Qgrlast = Qin[n];
                     nlast = n;
                 } else {
-                    if (!par.ModeMountain && (n == nmax)) { // TODO: replace with curved interp
-                        Qgr[n] = 0;
+                    if (method == GRWAT && !par.ModeMountain && (n == nmax)) { // TODO: replace with curved interp
+//                        Qgr[n] = 0;
                     }
 
                     dQ = 100 * abs(Qin[n - 1] - Qin[n]) / Qin[n - 1];
@@ -402,7 +510,6 @@ namespace grwat {
                     dQgr1 = -100 * (Qgrlast1 - Qin[n]) / Qgrlast1;
                     dQgr2 = abs(100 * (Qgrlast - Qin[n]) / ((n - nlast + 1) * Qgrlast));
                     dQgr2abs = abs((Qgrlast - Qin[n]) / (n - nlast + 1));
-
 
                     if (Qin[n] > Qgrlast or n > (nlast + 20)) {
                         auto con1 = (n - nmax > par.prodspada) and
@@ -431,29 +538,65 @@ namespace grwat {
                 }
             }
 
-            // 508: Linear interpolation of Qgr to zero
-            for (int k = start; k < end; ++k) {
-                if (Qgr[k] < 0) {
-                    for (int kk = k; kk < end; ++kk) {
+                // 508: Linear interpolation of Qgr to zero (GRWAT)
+//                for (int K = start; K < end; ++K) {
+//                    if (Qgr[K] < 0) { // GRWAT
+//                        for (int kk = K; kk < end; ++kk) {
+//                            if (Qgr[kk] >= 0) {
+//                                Qgr[K] = Qgr[K - 1] + (Qgr[kk] - Qgr[K - 1]) / (kk - K + 2);
+//                                break;
+//                            }
+//                        }
+//                        dQ = 100 * abs(Qin[K - 1] - Qin[K]) / Qin[K - 1];
+//
+//                        auto con1 = Qgr[K] > Qin[K];
+//                        auto con2 = dQ > (20 * par.grad);
+//                        auto con3 = abs(Qin[K + 1] - Qin[K - 1]) < abs(Qin[K + 1] - Qin[K]);
+//
+//                        if (con1 and not (con2 and con3))
+//                            Qgr[K] = Qin[K];
+//                    }
+//
+//                Qygr[i] = Qygr[i] + Qgr[K] / ny;
+//                Qy[i] = Qy[i] + Qin[K] / ny;
+//                }
+
+                // 508: Smoothing of Qgr (NEW)
+
+
+            for (auto k = start; k < end;) {
+                if (Qgr[k] < 0) { // NEW
+                    auto kk = k + 1;
+                    while (kk < end) {
                         if (Qgr[kk] >= 0) {
-                            Qgr[k] = Qgr[k - 1] + (Qgr[kk] - Qgr[k - 1]) / (kk - k + 2);
+                            auto quick = std::vector<double>(Qin.begin() + k - 1, Qin.begin() + kk + 1);
+                            auto a = quick[0];
+                            auto b = quick[quick.size() - 1];
+                            auto nx = quick.size();
+                            auto dx = b - a;
+
+                            auto dquick = std::vector<double>(quick.size());
+                            for (auto x = 0; x < nx; x++) {
+                                dquick[x] = quick[x] - quick[0] - dx * x / (nx-1);
+                            }
+
+                            auto qbaseflow = get_baseflow_recursive(dquick, alpha, 0);
+
+                            auto baseflow = std::vector<double>(quick.size());
+                            for (auto x = 0; x < nx; x++) {
+                                baseflow[x] = qbaseflow[x] + quick[0] + dx * x / (nx-1);
+                            }
+
+                            std::copy(baseflow.begin(), baseflow.end(), Qgr.begin() + k - 1);
+                            k = kk;
                             break;
+
                         }
+                        kk++;
                     }
-                    dQ = 100 * abs(Qin[k - 1] - Qin[k]) / Qin[k - 1];
-
-                    auto con1 = Qgr[k] > Qin[k];
-                    auto con2 = dQ > (20 * par.grad);
-                    auto con3 = abs(Qin[k + 1] - Qin[k - 1]) < abs(Qin[k + 1] - Qin[k]);
-
-                    if (con1 and not (con2 and con3))
-                        Qgr[k] = Qin[k];
                 }
-
-                Qygr[i] = Qygr[i] + Qgr[k] / ny;
-                Qy[i] = Qy[i] + Qin[k] / ny;
+                k++;
             }
-
 //            std::cout << "Qgr innterpolated" << std::endl;
 
             // FLOODS AND THAWS SEPARATION
@@ -466,18 +609,18 @@ namespace grwat {
 //                Tsri = 0;
 //                for (int u = m - HalfSt; u <= m + HalfSt; u++) {
 //                    Psumi += Pin[u];
-//                    Tsri += Tin[u] / p.nPav;
+//                    Tsri += Tin[u] / par_new.nPav;
 //                }
 
                 Psumi = std::accumulate(Pin.begin() + m - HalfSt, Pin.begin() + m + HalfSt, 0.0);
-                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0.0) / p.nPav;
+                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0.0) / par_new.nPav;
 
                 Psums[m] = Psumi;
 
 //                std::cout << "Psumi = " << Psumi << std::endl;
 //                std::cout << "Tsri = " << Tsri << std::endl;
 
-                if (Psumi >= p.Pcr and Tsri >= p.Tcr1) { // critical rain
+                if (Psumi >= par_new.Pcr and Tsri >= par_new.Tcr1) { // critical rain
                     FactPcr[i]++;
                     FlagsPcr[m] = true;
 
@@ -486,7 +629,7 @@ namespace grwat {
 
                 Tsrs[m] = Tsri;
 
-                if (Tsri >= p.Tcr2) { // substantial plus temp
+                if (Tsri >= par_new.Tcr2) { // substantial plus temp
                     FactPlusTemp[i]++;
                     FlagsPlusTemp[m] = true;
                 }
@@ -500,12 +643,12 @@ namespace grwat {
 
 //                Tsri = 0;
 //                for (int u = m - HalfStZ; u < m + HalfStZ; ++u) {
-//                    Tsri += Tin[u] / p.nZam;
+//                    Tsri += Tin[u] / par_new.nZam;
 //                }
 
-                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0.0) / p.nZam;
+                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0.0) / par_new.nZam;
 
-                if (Tsri < p.Tzam) {
+                if (Tsri < par_new.Tzam) {
                     FactMinusTemp[i]++;
                     FlagsMinusTemp[m] = true;
                 }
@@ -654,7 +797,11 @@ namespace grwat {
             } else {
                 auto HalfStW = (par.nWin - 1) / 2;
 
-                for (auto pp = polend[i] + 1; pp < end; ++pp) {
+                auto winmin = polend[i] + 1;
+                while (Mon[winmin] <= par.polmon2)
+                    winmin++;
+
+                for (auto pp = winmin; pp < end; ++pp) {
 
                     bool MarkCold = true;
 
@@ -700,9 +847,9 @@ namespace grwat {
                 Quick[k] = Qin[k] - Qgr[k];
             }
 
-            std::fill(Qtype.begin() + start, Qtype.begin() + polend[i], 0);
-            std::fill(Qtype.begin() + polend[i], Qtype.begin() + SummerEnd[i], 1);
-            std::fill(Qtype.begin() + SummerEnd[i], Qtype.begin() + end, 2);
+            std::fill(Type.begin() + start, Type.begin() + polend[i], 0);
+            std::fill(Type.begin() + polend[i], Type.begin() + SummerEnd[i], 1);
+            std::fill(Type.begin() + SummerEnd[i], Type.begin() + end, 2);
 
 //            std::cout << start << std::endl;
 //            std::cout << polend[i] << std::endl;

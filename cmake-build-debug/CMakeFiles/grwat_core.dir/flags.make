@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = 
 
-CXX_FLAGS = -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -std=gnu++17
+CXX_FLAGS =  -Wall -Wextra -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -std=gnu++17
 

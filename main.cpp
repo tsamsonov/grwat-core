@@ -36,7 +36,7 @@ int main() {
     vector<double> Tin;
     vector<double> Pin;
 
-    double size = 3;
+//    double size = 3;
 
     read_inputs("/Users/tsamsonov/GitHub/grwat-core/in.txt",
                 "/Users/tsamsonov/GitHub/grwat-core/inmeteo.txt",
@@ -54,16 +54,17 @@ int main() {
     vector<double> Qpav(n, 0);
     vector<double> Qthaw(n, 0);
     vector<double> Qpb(n, 0);
-    vector<int> Qtype(n, 0);
+    vector<int> Type(n, 0);
+    vector<int> Hyear(n, 0);
 
 //    for (auto p: Pin) {
 //        std::cout << p << std::endl;
 //    }
 
-    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Qtype, p);
+    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, p);
 
-//    for (auto value : Qtype) {
-//        cout << value << ' ';
-//    }
+    for (auto value : Qgr) {
+        cout << value << ' ';
+    }
 
 }
