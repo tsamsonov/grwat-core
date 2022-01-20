@@ -27,6 +27,53 @@ void read_inputs(string infilehydro, string infilemeteo,
     }
 }
 
+void read_input(string infile,
+                vector<int> &Day1,  vector<int> &Mon1,  vector<int> &Year1,
+                vector<double> &Qin1, vector<double> &Tin1, vector<double> &Pin1) {
+
+    io::CSVReader<6, io::trim_chars<>, io::no_quote_escape<' '>> input(infile);
+    string day, month, year, qin, tin, pin;
+
+    while(input.read_row(day, month, year, qin, tin, pin)){
+
+        try {
+            Day1.push_back(stoi(day));
+        } catch(...) {
+            Day1.push_back(NAN);
+        }
+
+        try {
+            Mon1.push_back(stoi(month));
+        } catch(...) {
+            Mon1.push_back(NAN);
+        }
+
+        try {
+            Year1.push_back(stoi(year));
+        } catch(...) {
+            Year1.push_back(NAN);
+        }
+
+        try {
+            Qin1.push_back(stod(qin));
+        } catch(...) {
+            Qin1.push_back(NAN);
+        }
+
+        try {
+            Tin1.push_back(stod(tin));
+        } catch(...) {
+            Tin1.push_back(NAN);
+        }
+
+        try {
+            Pin1.push_back(stod(pin));
+        } catch(...) {
+            Pin1.push_back(NAN);
+        }
+    }
+}
+
 int main() {
 
     vector<int> Day;
@@ -38,13 +85,10 @@ int main() {
 
 //    double size = 3;
 
-    read_inputs("/Users/tsamsonov/GitHub/grwat-core/in.txt",
-                "/Users/tsamsonov/GitHub/grwat-core/inmeteo.txt",
+    read_input("/Volumes/Work/_grwat/2022/grwat_bug/input.txt",
                 Day, Mon, Year, Qin, Tin, Pin);
 
     grwat::parameters p;
-
-    p.nPav = 5;
 
     auto n = Qin.size();
 
@@ -56,10 +100,6 @@ int main() {
     vector<double> Qpb(n, 0);
     vector<int> Type(n, 0);
     vector<int> Hyear(n, 0);
-
-//    for (auto p: Pin) {
-//        std::cout << p << std::endl;
-//    }
 
     grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, p);
 

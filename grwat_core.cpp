@@ -32,7 +32,7 @@ namespace grwat {
         double SignDelta = 0.01;
         double SignDelta1 = 0.0015;
         double PavRate = 0.001;
-        double FlagGaps = -999.0;
+        double FlagGaps = NAN;
         int InterpolStep = 15;
         double gradabs = 1000.0;
         bool ModeMountain = false;
@@ -270,10 +270,12 @@ namespace grwat {
         map<int, int> FactGapsin;
         int pos = 0;
         for (auto it = Qin.begin(); it != Qin.end(); ++it) {
-            if (*it == par.FlagGaps) {
+
+            if (isnan(*it)) {
+
                 int glen = 0;
                 while (it != Qin.end()) {
-                    if (*it != par.FlagGaps) break;
+                    if (!isnan(*it)) break;
                     glen++;
                     it++;
                 }
@@ -309,6 +311,9 @@ namespace grwat {
             separated = false;
             jittered = false;
             par_new = par;
+
+            iy[ng] = year.second.first; // 1st of january by default!
+
             for (auto iter = 0; iter < niter; ++iter) {
                 sumdonep = {0, 0, 0};
 
@@ -316,11 +321,11 @@ namespace grwat {
 
                     donep = {-1, -1, -1};
 
-                    if (Mon[l] >= par_new.polmon1 and Mon[l] <= par_new.polmon2 and Qin[l] != par_new.FlagGaps) { //223
+                    if (Mon[l] >= par_new.polmon1 and Mon[l] <= par_new.polmon2 and !isnan(Qin[l])) { //223
                         dQ = 0.0;
                         proceed = true;
                         for (auto ff = 1; ff <= par_new.polkol1; ff++) {
-                            if (Qin[l + ff] == par_new.FlagGaps or Qin[l + ff - 1] == par_new.FlagGaps) { // goto 8787
+                            if (isnan(Qin[l + ff]) or isnan(Qin[l + ff - 1])) { // goto 8787
                                 proceed = false;
                                 break;
                             } else {
@@ -397,12 +402,25 @@ namespace grwat {
 
             }
 
-            NumGapsY[year.first] = count(next(Qin.begin(), year.second.first),
-                                         next(Qin.begin(), year.second.second),
-                                         par.FlagGaps);
-            YGaps[ng] = NumGapsY[year.first] > 0;
+//            std::cout << year.second.first << ' ' << iy[ng] << std::endl;
+
             ng++; // number of years
         }
+
+        for (auto i = 0; i < iy.size(); ++i) {
+            auto year = years[i];
+
+            auto ilast = (i == iy.size()-1) ? Qin.size()-1 : iy[i + 1];
+
+            NumGapsY[year.first] = count_if(next(Qin.begin(), iy[i]),
+                                            next(Qin.begin(), ilast),
+                                            [](auto q){ return isnan(q); });
+            YGaps[i] = NumGapsY[year.first] > 0;
+
+//            std::cout << year.first << ' ' << NumGapsY[year.first] << ' ' << YGaps[i] << std::endl;
+
+        }
+
 
 //        cout << endl <<  "YEAR LIMITS:" << endl;
 //        for (auto y: years)
@@ -469,13 +487,13 @@ namespace grwat {
         double dQabs = 0.0, dQgr = 0.0, dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
         int nlast = 0;
 
-//        std::cout << std::endl << "SEPARATING DISCHARGE" << std::endl;
-
-//        if (method != GRWAT) {
-//            Qgr =
-//        }
+        //return;
 
         for (auto i = 0; i < nyears; ++i) { // main cycle along water-resource years
+
+            if (YGaps[i])
+                continue;
+
             auto start = (i > 0) ? iy[i] : 0;
             auto end = (i < nyears-1) ? iy[i+1] : ndays-1;
 //            auto ny = end - start;
@@ -597,7 +615,8 @@ namespace grwat {
                 }
                 k++;
             }
-//            std::cout << "Qgr innterpolated" << std::endl;
+
+//            std::cout << "Qgr interpolated" << std::endl;
 
             // FLOODS AND THAWS SEPARATION
 
@@ -663,6 +682,8 @@ namespace grwat {
             bool minus_found = false;
 //            std::cout << "Rakohod " << nmax-2 << " " << startPol[i] << std::endl;
 
+
+
             for (auto p = nmax-2; p > startPol[i]; --p) {
                 int FlexPrev = start-1;
                 if (p < Bend1) {
@@ -674,6 +695,7 @@ namespace grwat {
                             }
                         }
                     }
+
                     if (Flex1 >= start) {
 
 //                        std::cout << "start = " << start << std::endl;
@@ -690,6 +712,8 @@ namespace grwat {
                         } // 611
 
 
+
+
 //                        std::cout << "Flexprev = " << FlexPrev << std::endl;
 
 
@@ -704,22 +728,27 @@ namespace grwat {
                         // Frosts
                         for (auto pp = LocMax1 - HalfStZ; pp < Flex1; ++pp) {
                             if (FlagsMinusTemp[pp]) {
-                                startPol[i] = Flex1;
+
+//                                startPol[i] = Flex1;
+
                                 auto z = -log(Qin[Flex1] / Qin[LocMax1]) / (Flex1 - LocMax1);
+
                                 Qo = Qin[LocMax1] / exp(-z * LocMax1);
 
                                 for (auto qq = start; qq < Flex1; ++qq) {
-                                    Qthaw[qq] = Qin[qq] - Qgr[qq];
+                                        Qthaw[qq] = Qin[qq] - Qgr[qq];
                                 }
-
-                                for (auto qq = Flex1; qq < nmax*2; ++qq) {
-                                    if ((Qo * exp(-z * qq)) <= Qgr[qq]) {
-                                        break;
-                                    }
-                                    Qthaw[qq] = Qo * exp(-z * qq) - Qgr[qq];
-                                }
-                                minus_found = true;
-                                break;
+//
+//
+//
+//                                for (auto qq = Flex1; qq < (start + 2 * (nmax-start)); ++qq) {
+//                                    if ((Qo * exp(-z * qq)) <= Qgr[qq]) {
+//                                        break;
+//                                    }
+//                                    Qthaw[qq] = Qo * exp(-z * qq) - Qgr[qq];
+//                                }
+//                                minus_found = true;
+//                                break;
                              }
                         }
 
@@ -730,6 +759,8 @@ namespace grwat {
                 if (minus_found)
                     break;
             }
+
+            continue;
 
             if (!minus_found) { // 656
 //                std::cout << "Search for upwards pavodks " << std::endl;
