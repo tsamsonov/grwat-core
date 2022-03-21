@@ -67,6 +67,46 @@ int main() {
 
     grwat::parameters p;
 
+    p.mome = 11;
+    p.grad = 1.5;
+    p.grad1 = 7.0;
+    p.kdQgr1 = 500.0;
+    p.polmon1 = 3;
+    p.polmon2 = 5;
+    p.polkol1 = 10;
+    p.polkol2 = 15;
+    p.polkol3 = 30;
+    p.polgrad1 = 4;
+    p.polgrad2 = 2;
+    p.prodspada = 40;
+    p.nPav = 5;
+    p.nZam = 5;
+    p.nWin = 5;
+    p.Pcr = 3;
+    p.Tcr1 = 0.0;
+    p.Tcr2 = 2.0;
+    p.Tzam = -8.0;
+    p.Twin = -1.0;
+    p.SignDelta = 0.01;
+    p.SignDelta1 = 0.0015;
+    p.PavRate = 0.001;
+    p.FlagGaps = NAN;
+    p.InterpolStep = 15;
+    p.gradabs = 1000.0;
+    p.ModeMountain = false;
+    p.pgrad = 2.0;
+    p.polkolMount1 = 30;
+    p.polkolMount2 = 5;
+    p.polgradMount = 1.5;
+    p.niter = 100;
+    p.a = 0.975;
+    p.k = 0.975;
+    p.C = 0.05;
+    p.aq = -0.5;
+    p.padding = 0;
+    p.passes = 3;
+    p.filter = grwat::LYNE;
+
     auto n = Qin.size();
 
     vector<double> Qgr(n, 0);
