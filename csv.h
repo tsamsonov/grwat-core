@@ -680,7 +680,7 @@ namespace io{
                 };
         }
 
-        using ignore_column = unsigned int;
+        using ignore_column = unsigned;
         static const ignore_column ignore_no_column = 0;
         static const ignore_column ignore_extra_column = 1;
         static const ignore_column ignore_missing_column = 2;

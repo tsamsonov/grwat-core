@@ -105,7 +105,7 @@ int main() {
     p.aq = -0.5;
     p.padding = 0;
     p.passes = 3;
-    p.filter = grwat::LYNE;
+    p.filter = grwat::KUDELIN;
 
     auto n = Qin.size();
 
