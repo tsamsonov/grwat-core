@@ -468,7 +468,6 @@ namespace grwat {
             YGaps[i] = NumGapsY[i] > 0;
         }
 
-//        int j = 1;
         auto ny = iy.size();
         for (unsigned i = 0; i < ny; i++) {
             auto idx1 = iy[i];
