@@ -68,17 +68,17 @@ int main() {
     grwat::parameters p;
 
     p.mome = 11;
-    p.grad = 1.5;
-    p.grad1 = 7.0;
-    p.kdQgr1 = 500.0;
-    p.polmon1 = 3;
+    p.grad = 1;
+    p.grad1 = 1.5;
+    p.kdQgr1 = 1500.0;
+    p.polmon1 = 1;
     p.polmon2 = 5;
-    p.polkol1 = 10;
+    p.polkol1 = 5;
     p.polkol2 = 15;
-    p.polkol3 = 30;
-    p.polgrad1 = 4;
-    p.polgrad2 = 2;
-    p.prodspada = 40;
+    p.polkol3 = 25;
+    p.polgrad1 = 10;
+    p.polgrad2 = 6;
+    p.prodspada = 20;
     p.nPav = 5;
     p.nZam = 5;
     p.nWin = 5;
