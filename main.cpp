@@ -117,8 +117,9 @@ int main() {
     vector<double> Qpb(n, 0);
     vector<int> Type(n, 0);
     vector<int> Hyear(n, 0);
-    vector<int> Jittered(n, 0);
+    vector<int> Jittered;
+    vector<grwat::parameters> par;
 
-    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, Jittered, p);
+    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, Jittered, p, par, true);
 
 }

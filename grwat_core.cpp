@@ -182,7 +182,6 @@ namespace grwat {
 
         auto p1 = baseflow.begin();
         auto p2 = baseflow.begin();
-//        bool valid = true;
 
         auto is_nan = [](double d){ return isnan(d); };
 
@@ -210,7 +209,6 @@ namespace grwat {
                     Qf[begin] = Q[begin];
                     auto Qbase = vector<double>(n, 0);
                     for (auto i = begin + delta; inside(i); i += delta) {
-//                Qf[i] = alpha * Qf[i-delta] + 0.5 * (1 + alpha) * (Q[i] - Q[i-delta]);
                         Qf[i] = baseflow_recursive[method](Qf[i-delta], Q[i], Q[i-delta], a);
                         Qbase[i] = (Qf[i] > 0) ? Q[i] - Qf[i] : Q[i];
                     }
@@ -346,7 +344,7 @@ namespace grwat {
                   const vector<double>& Qin, const vector<double>& Tin, const vector<double>& Pin,
                   vector<double>& Qgr, vector<double>& Quick, vector<double>& Qpol, vector<double>& Qpav,
                   vector<double>& Qthaw, vector<double>& Qpb, vector<int>& Type, vector<int>& Hyear, vector<int>& Jittered,
-                  const parameters& par) {
+                  const parameters& par, vector<parameters>& par_out, bool debug = false) {
 
         for (unsigned i = 0; i < Day.size(); i++) {
             if (Day[i] > 31 or (Day[i] > 29 and Mon[i] == 28))
@@ -363,7 +361,7 @@ namespace grwat {
         vector<int> donep(3, -1); // three criteria of seasonal discharge beginning
         vector<int> sumdonep(3, 0); // sum that is used to assess the effectiveness of each donep in jittering
         vector<bool> YGaps(nyears, false); // flags if there are gaps in the year
-        vector<int> NumGapsY(nyears, 0); // number of gaps in the year
+        vector<unsigned> NumGapsY(nyears, 0); // number of gaps in the year
 
         auto ng = 0; // number of the year
         double polQsum = 0.0;
@@ -462,12 +460,15 @@ namespace grwat {
                 } else {
                     if (!jittered) {
                         jittered = true;
-                        Jittered[year.first] = 1;
+                        Jittered.push_back(Year[year.first]);
                     }
                     jitter_parameters(par_new, par, sumdonep);
                 }
 
             }
+
+            if (debug)
+                par_out.push_back(par_new);
 
             ng++; // number of years
         }
@@ -498,20 +499,24 @@ namespace grwat {
         std::vector<bool> FlagsPcr(ndays, false);  // is flood
         std::vector<bool> FlagsPlusTemp(ndays, false); // is thaw
         std::vector<bool> FlagsMinusTemp(ndays, false); // is thaw
-        std::vector<int> FactPcr(nyears, 0); // number of flood days
-        std::vector<int> FactPlusTemp(nyears, 0); // number of thaw days
-        std::vector<int> FactMinusTemp(nyears, 0); // number of thaw days
+        std::vector<unsigned> FactPcr(nyears, 0); // number of flood days
+        std::vector<unsigned> FactPlusTemp(nyears, 0); // number of thaw days
+        std::vector<unsigned> FactMinusTemp(nyears, 0); // number of thaw days
         std::vector<unsigned> startPol(nyears, 0); // number of seasonal flood begin day
-        std::vector<unsigned> SummerEnd(nyears, 0);
+
+        std::vector<unsigned> SummerEnd(nyears-1);
+        for (unsigned i = 0; i < nyears-1; ++i)
+            SummerEnd[i] = iy[i+1];
+        SummerEnd.push_back(ndays-1);
 
         std::fill(Qgr.begin(), Qgr.end(), -1);
         fill_nodata(Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, 0, iy[0]);
 
-        int LocMax1;
+        unsigned LocMax1;
         unsigned Flex1;
-        int Bend1;
-        int Flex2;
-        int Bend2;
+        unsigned Bend1;
+        unsigned Flex2;
+        unsigned Bend2;
         double Qo;
 
         int HalfSt = 0.5 * (par_new.nPav - 1);
@@ -660,9 +665,13 @@ namespace grwat {
                 }
 
                 if (cum > maxcum) {
-                    maxcum = cum;
-                    maxstart = s;
-                    maxend = e;
+                    if (Mon[s] <= par.polmon2) {
+                        maxcum = cum;
+                        maxstart = s;
+                        maxend = e;
+                    } else {
+                        break;
+                    }
                 }
 
                 s = e;
@@ -673,6 +682,9 @@ namespace grwat {
 //
 //            for (auto k = maxend; k < polend[i]; ++k)
 //                Qgr[k] = Qin[k];
+
+            for (unsigned k = start; k < maxstart; ++k)
+                Qthaw[k] = Qin[k] - Qgr[k];
 
             iy[i] = maxstart;
             start = maxstart;
@@ -713,8 +725,8 @@ namespace grwat {
             }
 
             startPol[i] = start; // initial freshet starting day before thaws are checked
-            LocMax1 = start-1;
-            Flex1 = start-1;
+            LocMax1 = start;
+            Flex1 = start;
             Bend1 = nmax;
 
             bool minus_found = false;
