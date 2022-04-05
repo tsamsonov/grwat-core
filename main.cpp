@@ -68,26 +68,27 @@ int main() {
     grwat::parameters p;
 
     p.mome = 11;
-    p.grad = 1;
-    p.grad1 = 1.5;
-    p.kdQgr1 = 1500.0;
-    p.polmon1 = 1;
+    p.grad = 3.5;
+    p.grad1 = 5;
+    p.kdQgr1 = 300.0;
+    p.polmon1 = 2;
     p.polmon2 = 5;
-    p.polkol1 = 5;
-    p.polkol2 = 15;
-    p.polkol3 = 25;
-    p.polgrad1 = 10;
-    p.polgrad2 = 6;
-    p.prodspada = 20;
+    p.polkol1 = 7;
+    p.polkol2 = 10;
+    p.polkol3 = 10;
+    p.polgrad1 = 25;
+    p.polgrad2 = 5;
+    p.prodspada = 15;
+    p.polcomp = 2.0;
     p.nPav = 5;
     p.nZam = 5;
     p.nWin = 5;
-    p.Pcr = 3;
+    p.Pcr = 10;
     p.Tcr1 = 0.0;
     p.Tcr2 = 2.0;
     p.Tzam = -8.0;
     p.Twin = -1.0;
-    p.SignDelta = 0.01;
+    p.SignDelta = 0.0005;
     p.SignDelta1 = 0.0015;
     p.PavRate = 0.001;
     p.FlagGaps = NAN;
@@ -99,13 +100,13 @@ int main() {
     p.polkolMount2 = 5;
     p.polgradMount = 1.5;
     p.niter = 100;
-    p.a = 0.975;
-    p.k = 0.975;
+    p.a = 0.93;
+    p.k = 0.93;
     p.C = 0.05;
     p.aq = -0.5;
     p.padding = 0;
-    p.passes = 3;
-    p.filter = grwat::KUDELIN;
+    p.passes = 9;
+    p.filter = grwat::LYNE;
 
     auto n = Qin.size();
 
