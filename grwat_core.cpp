@@ -84,8 +84,7 @@ namespace grwat {
                                    const double& k = 0.925,
                                    const double& C = 1,
                                    const double& alpha = 1) {
-        auto x = Qi_1 + C + alpha;
-        return Qbi_1 * k / (2 - k) + Qi * (1 - k) / (2 - k) * (x - x + 1);
+        return Qbi_1 * k / (2 - k) + Qi * (1 - k) / (2 - k);
     }
 
     static double baseflow_boughton(const double& Qbi_1,
@@ -94,8 +93,7 @@ namespace grwat {
                                     const double& k = 0.925,
                                     const double& C = 1,
                                     const double& alpha = 1) {
-        auto x = Qi_1 + alpha;
-        return Qbi_1 * k / (1 + C) + Qi * C / (1 + C) * (x - x + 1);
+        return Qbi_1 * k / (1 + C) + Qi * C / (1 + C);
     }
 
     static double baseflow_jakeman(const double& Qbi_1,
@@ -150,17 +148,39 @@ namespace grwat {
             {JAKEMAN, baseflow_jakeman}
         };
 
-        auto Q = pad_vector(Qin, padding);
-        int n = Q.size();
+        std::vector<double> baseflow(Qin);
 
-        auto Qb = vector<double>(n, 0);
-        Qb[0] = Q[0];
+        auto p1 = baseflow.begin();
+        auto p2 = baseflow.begin();
 
-        for (auto i = 1; i < n; i += 1) {
-            Qb[i] = baseflow_singlepass[method](Qb[i-1], Q[i], Q[i-1], k, C, aq);
+        auto is_nan = [](double d){ return isnan(d); };
+
+        while (true) {
+            p1 = std::find_if_not(p2, end(baseflow), is_nan);
+            p2 = std::find_if(p1, end(baseflow), is_nan);
+
+            if (p1 != p2) {
+
+                auto Q = pad_vector(p1, p2, padding);
+                int n = Q.size();
+
+                auto Qb = vector<double>(n, 0);
+                Qb[0] = Q[0];
+
+                for (auto i = 1; i < n; i += 1) {
+                    Qb[i] = baseflow_singlepass[method](Qb[i-1], Q[i], Q[i-1], k, C, aq);
+                    if (Qb[i] > Q[i])
+                        Qb[i] = Q[i];
+                }
+
+                std::copy(Qb.begin() + padding, Qb.end() - padding, p1);
+
+            } else {
+                break;
+            }
         }
 
-        return vector<double>(Qb.begin() + padding, Qb.end() - padding);
+        return baseflow;
     }
 
     static vector<double> get_baseflow_recursive(const vector<double>& Qin,
@@ -235,7 +255,7 @@ namespace grwat {
         auto n = Qin.size();
         vector<double> Qb(n, 0);
 
-        if (linear or nmax <= 0 or nmax >= n) {
+        if (linear or nmax <= 0 or nmax >= n-1) {
             auto afunc = (Qin[n-1] - Qin[0]) / (n - 1);
 
             for (unsigned x = 0; x < n; ++x) {
@@ -327,24 +347,23 @@ namespace grwat {
         return limits;
     }
 
-    static void fill_nodata(vector<double>& Qgr, vector<double>& Quick, vector<double>& Qpol, vector<double>& Qpav,
-                            vector<double>& Qthaw, vector<double>& Qpb, vector<int>& Type, vector<int>& Hyear,
+    static void fill_nodata(vector<double>& Qbase, vector<double>& Quick, vector<double>& Qspri, vector<double>& Qrain,
+                            vector<double>& Qthaw, vector<int>& Type, vector<int>& Hyear,
                             unsigned start, unsigned end) {
-        std::fill(Qgr.begin() + start, Qgr.begin() + end, -1);
+        std::fill(Qbase.begin() + start, Qbase.begin() + end, -1);
         std::fill(Quick.begin() + start, Quick.begin() + end, -1);
-        std::fill(Qpol.begin() + start, Qpol.begin() + end, -1);
-        std::fill(Qpav.begin() + start, Qpav.begin() + end, -1);
+        std::fill(Qspri.begin() + start, Qspri.begin() + end, -1);
+        std::fill(Qrain.begin() + start, Qrain.begin() + end, -1);
         std::fill(Qthaw.begin() + start, Qthaw.begin() + end, -1);
-        std::fill(Qpb.begin() + start, Qpb.begin() + end, -1);
         std::fill(Type.begin() + start, Type.begin() + end, -1);
         std::fill(Hyear.begin() + start, Hyear.begin() + end, -1);
     }
 
-    static bool separate(const vector<int>& Year, const vector<int>& Mon, const vector<int>& Day,
-                  const vector<double>& Qin, const vector<double>& Tin, const vector<double>& Pin,
-                  vector<double>& Qgr, vector<double>& Quick, vector<double>& Qpol, vector<double>& Qpav,
-                  vector<double>& Qthaw, vector<double>& Qpb, vector<int>& Type, vector<int>& Hyear, vector<int>& Jittered,
-                  const parameters& par, vector<parameters>& par_out, bool debug = false) {
+    static bool separate(const vector<int> &Year, const vector<int> &Mon, const vector<int> &Day, const vector<double> &Qin,
+                         const vector<double> &Tin, const vector<double> &Pin, vector<double> &Qbase, vector<double> &Quick,
+                         vector<double> &Qspri, vector<double> &Qrain, vector<double> &Qthaw, vector<int> &Type,
+                         vector<int> &Hyear, vector<int> &Jittered, const vector<parameters> &params,
+                         vector<parameters> &params_out, bool debug = false) {
 
         for (unsigned i = 0; i < Day.size(); i++) {
             if (Day[i] > 31 or (Day[i] > 29 and Mon[i] == 28))
@@ -356,6 +375,10 @@ namespace grwat {
         auto years = year_limits(Year);
         auto nyears = years.size();
         auto ndays = Qin.size();
+
+        auto nparams = params.size();
+        if (nparams < 1 or (nparams > 1 and nparams != nyears))
+            return false;
 
         vector<unsigned> iy(nyears, -99); // indices of water resource years starts
         vector<int> donep(3, -1); // three criteria of seasonal discharge beginning
@@ -370,17 +393,20 @@ namespace grwat {
 
         bool separated = false;
         auto jittered = false;
-        grwat::parameters par_new = par;
 
+        auto single = nparams == 1;
 
-        for (auto year: years) {
+        for (unsigned i = 0; i < years.size(); ++i) {
+
+            auto year = years[i];
             separated = false;
             jittered = false;
-            par_new = par;
+
+            auto par_new = single ? params[0] : params[i];
 
             iy[ng] = year.first; // 1st day of hydrograph by default!
 
-            for (auto iter = 0; iter < par.niter; ++iter) {
+            for (auto iter = 0; iter < par_new.niter; ++iter) {
                 sumdonep = {0, 0, 0};
 
                 for (auto l = year.first; l <= year.second; ++l) { // 177
@@ -462,13 +488,13 @@ namespace grwat {
                         jittered = true;
                         Jittered.push_back(Year[year.first]);
                     }
-                    jitter_parameters(par_new, par, sumdonep);
+                    jitter_parameters(par_new, params[i], sumdonep);
                 }
 
             }
 
             if (debug)
-                par_out.push_back(par_new);
+                params_out.push_back(par_new);
 
             ng++; // number of years
         }
@@ -509,8 +535,8 @@ namespace grwat {
             SummerEnd[i] = iy[i+1];
         SummerEnd.push_back(ndays-1);
 
-        std::fill(Qgr.begin(), Qgr.end(), -1);
-        fill_nodata(Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, 0, iy[0]);
+        std::fill(Qbase.begin(), Qbase.end(), -1);
+        fill_nodata(Qbase, Quick, Qspri, Qrain, Qthaw, Type, Hyear, 0, iy[0]);
 
         unsigned LocMax1;
         unsigned Flex1;
@@ -519,8 +545,6 @@ namespace grwat {
         unsigned Bend2;
         double Qo;
 
-        int HalfSt = 0.5 * (par_new.nPav - 1);
-        int HalfStZ = 0.5 * (par_new.nZam - 1);
         double Psumi, Tsri;
 
         double dQabs = 0.0, /*dQgr = 0.0,*/ dQgr1 = 0.0, dQgr2 = 0.0, dQgr2abs = 0.0, Qgrlast = 0.0, Qgrlast1 = 0;
@@ -531,10 +555,15 @@ namespace grwat {
             auto start = iy[i]; //(i > 0) ? iy[i] : 0;
             auto end = (i < nyears-1) ? iy[i+1] : ndays-1;
 
+            auto par = single ? params[0] : params[i];
+
             if (YGaps[i] or Mon[start] > par.polmon2) {
-                fill_nodata(Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, start, end);
+                fill_nodata(Qbase, Quick, Qspri, Qrain, Qthaw, Type, Hyear, start, end);
                 continue;
             }
+
+            int HalfSt = 0.5 * (par.nPav - 1);
+            int HalfStZ = 0.5 * (par.nZam - 1);
 
             // position of the maximum discharge inside year
             auto nmax = start + distance(Qin.begin() + start, max_element(Qin.begin() + start, Qin.begin() + start + 2*par.polcomp*par.prodspada));
@@ -548,7 +577,7 @@ namespace grwat {
                 gradQ[n] = 100 * deltaQ[n] / Qin[n];
 
                 if (n == start or n == end-1) { // ground in first and last is equal to Qin
-                    Qgr[n] = Qin[n];
+                    Qbase[n] = Qin[n];
                     Qgrlast1 = Qin[n];
                     Qgrlast = Qin[n];
                     nlast = n;
@@ -575,7 +604,7 @@ namespace grwat {
                             continue;
                     }
 
-                    Qgr[n] = Qin[n];
+                    Qbase[n] = Qin[n];
                     if (n > nmax) // tends to get wrong spring flood
                         ngrpor++;
 
@@ -590,18 +619,18 @@ namespace grwat {
 
             // seasonal frechet is not found
             if (polend[i] == 0) {
-                fill_nodata(Qgr, Quick, Qpol, Qpav, Qthaw, Qpb, Type, Hyear, start, end);
+                fill_nodata(Qbase, Quick, Qspri, Qrain, Qthaw, Type, Hyear, start, end);
                 continue;
             }
 
-            // 508: Smoothing of Qgr (NEW)
+            // 508: Smoothing of Qbase (NEW)
 
 
             for (auto k = start; k < end;) {
-                if (Qgr[k] < 0) { // NEW
+                if (Qbase[k] < 0) { // NEW
                     auto kk = k + 1;
                     while (kk < end) {
-                        if (Qgr[kk] >= 0) {
+                        if (Qbase[kk] >= 0) {
                             auto quick = std::vector<double>(Qin.begin() + k - 1, Qin.begin() + kk + 1);
                             auto a = quick[0];
                             auto b = quick[quick.size() - 1];
@@ -616,7 +645,7 @@ namespace grwat {
 
                             if (par.filter == KUDELIN) {
                                 auto baseflow = get_baseflow_kudelin(quick, nmax-k, !is_freshet);
-                                std::copy(baseflow.begin(), baseflow.end(), Qgr.begin() + k - 1);
+                                std::copy(baseflow.begin(), baseflow.end(), Qbase.begin() + k - 1);
                             } else {
                                 auto qbaseflow =
                                     is_singlepass(par.filter) ?
@@ -628,7 +657,7 @@ namespace grwat {
                                     baseflow[x] = qbaseflow[x] + quick[0] + dx * x / (nx-1);
                                 }
 
-                                std::copy(baseflow.begin(), baseflow.end(), Qgr.begin() + k - 1);
+                                std::copy(baseflow.begin(), baseflow.end(), Qbase.begin() + k - 1);
                             }
 
                             k = kk;
@@ -649,7 +678,7 @@ namespace grwat {
             auto s = start;
             while (s < polend[i]) {
 
-                if (abs(Qgr[s] - Qin[s]) <= 0.000001) {
+                if (abs(Qbase[s] - Qin[s]) <= 0.000001) {
                     s++;
                     continue;
                 }
@@ -657,10 +686,10 @@ namespace grwat {
                 auto cum = 0;
                 auto e = s;
                 while (e <= polend[i]) {
-                    cum += Qin[e] - Qgr[e];
+                    cum += Qin[e] - Qbase[e];
                     e++;
 
-                    if (abs(Qgr[e] - Qin[e]) <= 0.000001)
+                    if (abs(Qbase[e] - Qin[e]) <= 0.000001)
                         break;
                 }
 
@@ -677,14 +706,8 @@ namespace grwat {
                 s = e;
             }
 
-//            for (auto k = start; k < maxstart; ++k)
-//                Qgr[k] = Qin[k];
-//
-//            for (auto k = maxend; k < polend[i]; ++k)
-//                Qgr[k] = Qin[k];
-
             for (unsigned k = start; k < maxstart; ++k)
-                Qthaw[k] = Qin[k] - Qgr[k];
+                Qthaw[k] = Qin[k] - Qbase[k];
 
             iy[i] = maxstart;
             start = maxstart;
@@ -697,18 +720,18 @@ namespace grwat {
             for (unsigned m = start + HalfSt; m < end - HalfSt; ++m) {
 
                 Psumi = std::accumulate(Pin.begin() + m - HalfSt, Pin.begin() + m + HalfSt, 0.0);
-                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0.0) / par_new.nPav;
+                Tsri = std::accumulate(Tin.begin() + m - HalfSt, Tin.begin() + m + HalfSt, 0.0) / par.nPav;
 
                 Psums[m] = Psumi;
 
-                if (Psumi >= par_new.Pcr and Tsri >= par_new.Tcr1) { // critical rain
+                if (Psumi >= par.Pcr and Tsri >= par.Tcr1) { // critical rain
                     FactPcr[i]++;
                     FlagsPcr[m] = true;
                 }
 
                 Tsrs[m] = Tsri;
 
-                if (Tsri >= par_new.Tcr2) { // substantial plus temp
+                if (Tsri >= par.Tcr2) { // substantial plus temp
                     FactPlusTemp[i]++;
                     FlagsPlusTemp[m] = true;
                 }
@@ -716,9 +739,9 @@ namespace grwat {
 
             // Check frosts
             for (unsigned m = start + HalfStZ; m < end - HalfStZ; ++m) {
-                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0.0) / par_new.nZam;
+                Tsri = std::accumulate(Tin.begin() + m - HalfStZ, Tin.begin() + m + HalfStZ, 0.0) / par.nZam;
 
-                if (Tsri < par_new.Tzam) {
+                if (Tsri < par.Tzam) {
                     FactMinusTemp[i]++;
                     FlagsMinusTemp[m] = true;
                 }
@@ -729,98 +752,25 @@ namespace grwat {
             Flex1 = start;
             Bend1 = nmax;
 
-            bool minus_found = false;
-
-            // search for upwards thaws
-
-//            for (auto p = nmax-2; p > startPol[i]; --p) {
-//                unsigned FlexPrev = start;
-//                if (p < Bend1) {
-//                    if ((deltaQ[p] <= -Qin[nmax] * par.SignDelta) or ((deltaQ[p] + deltaQ[p-1]) <= -Qin[nmax] * par.SignDelta)) {
-//                        for (auto pp = p; pp < nmax-2; ++pp) {
-//                            if (deltaQ[pp] > 0) {
-//                                Flex1 = pp;
-//                                break;
-//                            }
-//                        }
-//                    }
-//
-//                    if (Flex1 >= start) {
-//                        for (auto u = Flex1; u > startPol[i]; --u) { // 602
-//                            if ((deltaQ[u] <= (-Qin[nmax] * par.SignDelta * 0.5)) or ((deltaQ[u] + deltaQ[u - 1]) <= (-Qin[nmax] * par.SignDelta * 0.5))) {
-//                                for (auto pp = u; pp < Flex1-1; ++pp) {
-//                                    if (deltaQ[pp] > 0) {
-//                                        FlexPrev = pp;
-//                                    }
-//                                }
-//                            }
-//                        } // 611
-//
-//                        if (FlexPrev > start) {
-//                            LocMax1 = std::distance(Qin.begin() + FlexPrev, max_element(Qin.begin() + FlexPrev, Qin.begin() + Flex1)) + FlexPrev - 1;
-//                        } else {
-//                            LocMax1 = std::distance(Qin.begin() + start, max_element(Qin.begin() + start, Qin.begin() + Flex1)) + start;
-//                        } // 617
-//
-//                        // Frosts
-//                        for (unsigned pp = LocMax1 - HalfStZ; pp < Flex1; ++pp) {
-//                            if (FlagsMinusTemp[pp]) {
-//
-//                                startPol[i] = Flex1;
-//
-//                                auto z = -log(Qin[Flex1] / Qin[LocMax1]) / (Flex1 - LocMax1);
-//
-//                                Qo = Qin[LocMax1]; // exp(-z * LocMax1);
-//
-//                                for (auto qq = start; qq < Flex1; ++qq) {
-//                                        Qthaw[qq] = Qin[qq] - Qgr[qq];
-//                                }
-//
-//                                for (auto qq = Flex1; qq < polend[i]; ++qq) {
-//
-//                                    if (auto qval = Qo * exp(-z * (qq-LocMax1)); qval >= Qgr[qq] and qval <= Qin[qq]) {
-//                                        Qthaw[qq] = qval - Qgr[qq];
-//                                    }
-//                                    else {
-//                                        break;
-//                                    }
-//
-//                                }
-//                                minus_found = true;
-//                                break;
-//                             }
-//                        }
-//
-//                    }
-//
-//                }
-//
-//                if (minus_found)
-//                    break;
-//            }
-
             // search for upwards floods
 
-            if (!minus_found) { // 656
-
-                for (unsigned pp = LocMax1; pp > start; --pp) {
-                    if ((Qin[pp] < Qin[Flex1]) and (deltaQ[pp - 1] <= ((Qin[Flex1] - Qin[pp]) / (Flex1 - pp)))) {
-                        Bend1 = pp;
-                        break;
-                    }
+            for (unsigned pp = LocMax1; pp > start; --pp) {
+                if ((Qin[pp] < Qin[Flex1]) and (deltaQ[pp - 1] <= ((Qin[Flex1] - Qin[pp]) / (Flex1 - pp)))) {
+                    Bend1 = pp;
+                    break;
                 }
+            }
 
-                for (auto pp = Bend1 - 2 * HalfSt; pp < LocMax1; ++pp) {
+            for (auto pp = Bend1 - 2 * HalfSt; pp < LocMax1; ++pp) {
 
-                    if (FlagsPcr[pp]) { // Rain
+                if (FlagsPcr[pp]) { // Rain
 
-                        auto afunc = (Qin[Flex1] - Qin[Bend1]) / (Flex1 - Bend1);
-                        auto bfunc = Qin[Flex1] - afunc * Flex1;
+                    auto afunc = (Qin[Flex1] - Qin[Bend1]) / (Flex1 - Bend1);
+                    auto bfunc = Qin[Flex1] - afunc * Flex1;
 
-                        for (unsigned qq = Bend1; qq < Flex1; ++qq) {
-                            if (auto qval = afunc * qq + bfunc; qval < Qin[qq]) {
-                                Qpav[qq] = Qin[qq] - qval;
-                            }
+                    for (unsigned qq = Bend1; qq < Flex1; ++qq) {
+                        if (auto qval = afunc * qq + bfunc; qval < Qin[qq]) {
+                            Qrain[qq] = Qin[qq] - qval;
                         }
                     }
                 }
@@ -855,26 +805,22 @@ namespace grwat {
                         }
                     }
 
-//                    bool is_flood = false;
-//                    bool is_peak = false;
                     for (unsigned pp = Flex2 + 1; pp < polend[i]; ++pp) {
                         if (((Qin[pp] < Qin[Flex2])
-                            and  (/*std::min(deltaQ[pp], deltaQ[pp - 1]) */ deltaQ[pp] >= (Qin[pp] - Qin[Flex2]) / (pp - Flex2)))
-                            or (pp == polend[i])) {
+                            and  (deltaQ[pp] >= (Qin[pp] - Qin[Flex2]) / (pp - Flex2)))
+                            or (pp == polend[i]-1)) {
                             Bend2 = pp;
-
-//                            is_peak = true;
 
                             for (auto ppp = Bend2 - HalfSt; ppp > Flex2 - 2*HalfSt; --ppp) {
                                 if (FlagsPcr[ppp]) {
                                     auto z = -log(Qin[Bend2] / Qin[Flex2]) / (Bend2 - Flex2);
-                                    Qo = Qin[Flex2]; // exp(-z * Flex2);
+                                    Qo = Qin[Flex2];
                                     for (auto qq = Flex2; qq < Bend2; ++qq) {
                                         auto qval = Qo * exp(-z * (qq-Flex2));
 
                                         if (qval <= Qin[qq]) {
-                                            if (qval > Qgr[qq]) {
-                                                Qpav[qq] = Qin[qq] - qval;
+                                            if (qval > Qbase[qq]) {
+                                                Qrain[qq] = Qin[qq] - qval;
                                             } else {
                                                 early_polend = true;
                                                 polend[i] = qq;
@@ -882,16 +828,11 @@ namespace grwat {
                                             }
 
                                         }
-//                                        if (Qpav[qq] < 0) {
-//                                            Qpav[qq] = 0;
-//                                            break;
-//                                        }
                                     }
 
                                     if (early_polend)
                                         break;
 
-//                                    is_flood = true;
                                     floods_found = true;
 
                                     p = Bend2; // to promote p cycle after the peak
@@ -906,18 +847,12 @@ namespace grwat {
                                 nmax2_bend = Bend2;
                             }
 
-//                            if (early_polend)
                             break;
                         }
                     }
 
                     if (early_polend)
                         break;
-
-//                    if (is_peak and !is_flood) {
-//                        nmax2 = Flex2 + distance(Qin.begin() + Flex2, max_element(Qin.begin() + Flex2, Qin.begin() + Bend2));
-//                        nmax2_bend = Bend2;
-//                    }
                 }
             }
 
@@ -938,86 +873,75 @@ namespace grwat {
                     auto q = Qo * exp(-z * (x-ref));
 
                     if (is_endpol) {
-                        q = Qgr[x]; // 0
+                        q = Qbase[x]; // 0
                     } else if (is_endflood) {
                         q = Qin[x];
                     } else if (x > nmax2_bend) {
-                        if (q < Qgr[x]) {
+                        if (q < Qbase[x]) {
                             is_endpol = true;
                             polend[i] = x;
-                            q = Qgr[x]; // 0
+                            q = Qbase[x]; // 0
                         }
 
                         if (q > Qin[x]) {
-                            z = -log(Qgr[x] / Qin[nmax2_bend]) / (x - nmax2_bend);
+                            z = -log(Qbase[x] / Qin[nmax2_bend]) / (x - nmax2_bend);
                             x = nmax2_bend;
                             ref = nmax2_bend;
                             Qo = Qin[nmax2_bend];
                             continue;
-//                            q = Qin[x];
-//                            if (!is_endflood) {
-//                                is_endflood = true;
-//                            }
                         }
                     }
-                    Qpav[x] = Qin[x] - q;
+                    Qrain[x] = Qin[x] - q;
                     x++;
                 }
 
             }
 
-            if (par.ModeMountain) {
+            // non-mountain separation
+            auto HalfStW = (par.nWin - 1) / 2;
 
-            } else {
-                auto HalfStW = (par.nWin - 1) / 2;
+            auto winmin = polend[i] + 1;
+            while (Mon[winmin] <= par.polmon2)
+                winmin++;
 
-                auto winmin = polend[i] + 1;
-                while (Mon[winmin] <= par.polmon2)
-                    winmin++;
+            for (auto pp = winmin; pp < end; ++pp) {
 
-                for (auto pp = winmin; pp < end; ++pp) {
+                bool MarkCold = true;
 
-                    bool MarkCold = true;
-
-                    for (auto u = pp; u < pp + par.nWin; ++u) {
-                        if (Tin[u] > par.Twin) {
-                            MarkCold = false;
-                            break;
-                        }
-                    }
-
-                    if (MarkCold) {
-                        if (Qin[pp + HalfStW] == Qgr[pp + HalfStW]) {
-                          SummerEnd[i] = pp + HalfStW;
-                        } else {
-                          auto ppp = pp;
-                          while (Qin[ppp] > Qgr[ppp]) {
-                            ppp++;
-                          }
-                          SummerEnd[i] = ppp;
-                        }
+                for (auto u = pp; u < pp + par.nWin; ++u) {
+                    if (Tin[u] > par.Twin) {
+                        MarkCold = false;
                         break;
                     }
+                }
+
+                if (MarkCold) {
+                    if (Qin[pp + HalfStW] == Qbase[pp + HalfStW]) {
+                      SummerEnd[i] = pp + HalfStW;
+                    } else {
+                      auto ppp = pp;
+                      while (Qin[ppp] > Qbase[ppp]) {
+                        ppp++;
+                      }
+                      SummerEnd[i] = ppp;
+                    }
+                    break;
                 }
             }
 
             for (unsigned k = polend[i]; k < end; ++k) {
-                if (Qin[k] > Qgr[k]) {
+                if (Qin[k] > Qbase[k]) {
                     if (k <= SummerEnd[i]) {
-//                        if (k > polend[i]) {
-                            Qpav[k] = Qin[k] - Qgr[k];
-//                        } else {
-//                            Qpav[k] = Qin[k] - Qgr[k] - Qpb[k];
-//                        }
+                        Qrain[k] = Qin[k] - Qbase[k];
                     } else {
-                        Qthaw[k] = Qin[k] - Qgr[k];
+                        Qthaw[k] = Qin[k] - Qbase[k];
                     }
                 }
             }
 
             for (auto k = start; k < end; ++k) {
-                Qpol[k] = Qin[k] - Qgr[k] - Qthaw[k] - Qpav[k];
-                Quick[k] = Qin[k] - Qgr[k];
+                Qspri[k] = Qin[k] - Qbase[k] - Qthaw[k] - Qrain[k];
+                Quick[k] = Qin[k] - Qbase[k];
             }
 
             std::fill(Type.begin() + start, Type.begin() + polend[i], 0);
