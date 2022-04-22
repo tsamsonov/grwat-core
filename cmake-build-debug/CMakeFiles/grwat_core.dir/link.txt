@@ -1,1 +1,1 @@
-/Library/Developer/CommandLineTools/usr/bin/c++  -Wall -Wextra -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/grwat_core.dir/grwat_core.cpp.o CMakeFiles/grwat_core.dir/main.cpp.o -o grwat_core 
+/Library/Developer/CommandLineTools/usr/bin/c++  -Wall -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/grwat_core.dir/grwat_core.cpp.o CMakeFiles/grwat_core.dir/main.cpp.o -o grwat_core 

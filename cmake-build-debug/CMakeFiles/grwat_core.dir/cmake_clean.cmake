@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/grwat_core.dir/grwat_core.cpp.o"
+  "CMakeFiles/grwat_core.dir/grwat_core.cpp.o.d"
   "CMakeFiles/grwat_core.dir/main.cpp.o"
+  "CMakeFiles/grwat_core.dir/main.cpp.o.d"
   "grwat_core"
   "grwat_core.pdb"
 )

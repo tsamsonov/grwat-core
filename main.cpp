@@ -62,8 +62,13 @@ int main() {
     vector<double> Tin;
     vector<double> Pin;
 
-    read_input("/Users/tsamsonov/GitHub/grwat/temp/input.txt",
-                Day, Mon, Year, Qin, Tin, Pin);
+//    // mac
+//    read_input("/Users/tsamsonov/GitHub/grwat/data-raw/input.txt",
+//                Day, Mon, Year, Qin, Tin, Pin);
+
+    // windows
+    read_input("Y:/GitHub/grwat/data-raw/input.txt",
+               Day, Mon, Year, Qin, Tin, Pin);
 
     grwat::parameters p;
 
@@ -83,7 +88,7 @@ int main() {
     p.nPav = 5;
     p.nZam = 5;
     p.nWin = 5;
-    p.Pcr = 10;
+    p.Pcr = 5;
     p.Tcr1 = 0.0;
     p.Tcr2 = 2.0;
     p.Tzam = -8.0;
@@ -121,7 +126,8 @@ int main() {
     vector<grwat::parameters> out_par;
     vector<grwat::parameters> in_par { p };
 
-    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Type, Hyear, Jittered, in_par,
-                    out_par, true);
+    for (auto i = 0; i < 10; ++i)
+        grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Type, Hyear, Jittered, in_par,
+                        out_par, true);
 
 }
