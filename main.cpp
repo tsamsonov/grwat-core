@@ -62,13 +62,10 @@ int main() {
     vector<double> Tin;
     vector<double> Pin;
 
-//    // mac
-//    read_input("/Users/tsamsonov/GitHub/grwat/data-raw/input.txt",
-//                Day, Mon, Year, Qin, Tin, Pin);
+    // mac
+    read_input("/Users/tsamsonov/GitHub/grwat-core/input.txt",
+                Day, Mon, Year, Qin, Tin, Pin);
 
-    // windows
-    read_input("Y:/GitHub/grwat/data-raw/input.txt",
-               Day, Mon, Year, Qin, Tin, Pin);
 
     grwat::parameters p;
 
