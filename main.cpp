@@ -123,8 +123,7 @@ int main() {
     vector<grwat::parameters> out_par;
     vector<grwat::parameters> in_par { p };
 
-    for (auto i = 0; i < 10; ++i)
-        grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Type, Hyear, Jittered, in_par,
-                        out_par, true);
+    grwat::separate(Year, Mon, Day, Qin, Tin, Pin, Qgr, Quick, Qpol, Qpav, Qthaw, Type, Hyear, Jittered, in_par,
+                    out_par, true);
 
 }
