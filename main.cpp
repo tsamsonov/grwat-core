@@ -63,38 +63,38 @@ int main() {
     vector<double> Pin;
 
     // mac
-    read_input("/Users/tsamsonov/GitHub/grwat-core/input.txt",
+    read_input("Y:/GitHub/grwat-core/input.txt",
                 Day, Mon, Year, Qin, Tin, Pin);
 
 
     grwat::parameters p;
 
     p.mome = 11;
-    p.grad = 3.5;
+    p.grad = 1.7;
     p.grad1 = 5;
-    p.kdQgr1 = 300.0;
+    p.kdQgr1 = 400.0;
     p.polmon1 = 2;
     p.polmon2 = 5;
-    p.polkol1 = 7;
+    p.polkol1 = 8;
     p.polkol2 = 10;
-    p.polkol3 = 10;
-    p.polgrad1 = 25;
-    p.polgrad2 = 5;
-    p.prodspada = 15;
+    p.polkol3 = 30;
+    p.polgrad1 = 10;
+    p.polgrad2 = 2.5;
+    p.prodspada = 35;
     p.polcomp = 2.0;
     p.nPav = 5;
     p.nZam = 5;
     p.nWin = 5;
     p.Pcr = 5;
     p.Tcr1 = 0.0;
-    p.Tcr2 = 2.0;
     p.Tzam = -8.0;
     p.Twin = -1.0;
-    p.SignDelta = 0.0005;
+    p.SignDelta = 0.01;
     p.SignDelta1 = 0.0015;
     p.PavRate = 0.001;
     p.FlagGaps = NAN;
     p.InterpolStep = 15;
+    p.Tcr2 = 2.0;
     p.gradabs = 1000.0;
     p.ModeMountain = false;
     p.pgrad = 2.0;
@@ -102,13 +102,13 @@ int main() {
     p.polkolMount2 = 5;
     p.polgradMount = 1.5;
     p.niter = 100;
-    p.a = 0.93;
+    p.a = 0.925;
     p.k = 0.93;
     p.C = 0.05;
     p.aq = -0.5;
     p.padding = 0;
-    p.passes = 9;
-    p.filter = grwat::LYNE;
+    p.passes = 3;
+    p.filter = grwat::JAKEMAN;
 
     auto n = Qin.size();
 
