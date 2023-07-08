@@ -63,7 +63,7 @@ int main() {
     vector<double> Pin;
 
     // mac
-    read_input("Y:/GitHub/grwat-core/input.txt",
+    read_input("/Users/tsamsonov/GitHub/grwat-core/input.txt",
                 Day, Mon, Year, Qin, Tin, Pin);
 
 
@@ -72,7 +72,7 @@ int main() {
     p.mome = 11;
     p.grad = 1.7;
     p.grad1 = 5;
-    p.kdQgr1 = 400.0;
+    p.kdQgr1 = 4.0;
     p.polmon1 = 2;
     p.polmon2 = 5;
     p.polkol1 = 8;
